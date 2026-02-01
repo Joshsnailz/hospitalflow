@@ -3,6 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { HttpModule } from '@nestjs/axios';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { RbacModule } from './rbac/rbac.module';
 import { HealthModule } from './health/health.module';
 import { LoggingMiddleware } from './middleware/logging.middleware';
 
@@ -34,6 +36,8 @@ import { LoggingMiddleware } from './middleware/logging.middleware';
       },
     ]),
     AuthModule,
+    UsersModule,
+    RbacModule,
     HealthModule,
   ],
 })
