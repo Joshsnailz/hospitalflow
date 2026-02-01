@@ -3,11 +3,11 @@ import {
   IsNotEmpty,
   IsString,
   MinLength,
-  IsEnum,
+  IsIn,
   Matches,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { UserRole } from '../../users/entities/user.entity';
+import { UserRole, ALL_ROLES, getRoleDisplayName } from '../../config/roles.config';
 
 export class RegisterDto {
   @ApiProperty({
@@ -50,29 +50,12 @@ export class RegisterDto {
   @ApiProperty({
     example: 'doctor',
     description: 'User role',
-    enum: [
-      'super_admin',
-      'consultant',
-      'doctor',
-      'hospital_pharmacist',
-      'pharmacy_technician',
-      'pharmacy_support_worker',
-      'pharmacy_support_manager',
-      'clinical_admin',
-      'prescriber',
-    ],
+    enum: ALL_ROLES,
+    enumName: 'UserRole',
   })
-  @IsEnum([
-    'super_admin',
-    'consultant',
-    'doctor',
-    'hospital_pharmacist',
-    'pharmacy_technician',
-    'pharmacy_support_worker',
-    'pharmacy_support_manager',
-    'clinical_admin',
-    'prescriber',
-  ])
+  @IsIn(ALL_ROLES, {
+    message: `Role must be one of: ${ALL_ROLES.join(', ')}`,
+  })
   @IsNotEmpty()
   role: UserRole;
 }

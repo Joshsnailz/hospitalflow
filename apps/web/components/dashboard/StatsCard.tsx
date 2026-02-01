@@ -1,48 +1,68 @@
-import { LucideIcon } from 'lucide-react';
+'use client';
+
+import { LucideIcon, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface StatsCardProps {
   title: string;
   value: string | number;
   change?: string;
+  changeValue?: number;
   changeType?: 'positive' | 'negative' | 'neutral';
   icon: LucideIcon;
-  iconColor?: string;
-  iconBgColor?: string;
+  description?: string;
 }
 
 export function StatsCard({
   title,
   value,
   change,
+  changeValue,
   changeType = 'neutral',
   icon: Icon,
-  iconColor = 'text-blue-600',
-  iconBgColor = 'bg-blue-100',
+  description,
 }: StatsCardProps) {
+  const TrendIcon = changeType === 'positive'
+    ? TrendingUp
+    : changeType === 'negative'
+    ? TrendingDown
+    : Minus;
+
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-slate-600">{title}</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{value}</p>
-          {change && (
-            <p
-              className={cn(
-                'text-sm mt-1',
-                changeType === 'positive' && 'text-green-600',
-                changeType === 'negative' && 'text-red-600',
-                changeType === 'neutral' && 'text-slate-500'
+    <Card className="overflow-hidden">
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between">
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+            <div className="flex items-baseline gap-2">
+              <p className="text-3xl font-bold tracking-tight">{value}</p>
+              {change && (
+                <div
+                  className={cn(
+                    'flex items-center gap-1 text-xs font-medium',
+                    changeType === 'positive' && 'text-emerald-600',
+                    changeType === 'negative' && 'text-red-600',
+                    changeType === 'neutral' && 'text-muted-foreground'
+                  )}
+                >
+                  <TrendIcon className="h-3 w-3" />
+                  <span>{change}</span>
+                </div>
               )}
-            >
-              {change}
-            </p>
-          )}
+            </div>
+            {description && (
+              <p className="text-xs text-muted-foreground">{description}</p>
+            )}
+          </div>
+          <div className={cn(
+            'flex h-12 w-12 items-center justify-center rounded-lg',
+            'bg-primary/10'
+          )}>
+            <Icon className="h-6 w-6 text-primary" />
+          </div>
         </div>
-        <div className={cn('p-3 rounded-lg', iconBgColor)}>
-          <Icon className={cn('h-6 w-6', iconColor)} />
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

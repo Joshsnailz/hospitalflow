@@ -7,17 +7,10 @@ import {
   OneToMany,
 } from 'typeorm';
 import { RefreshTokenEntity } from '../../auth/entities/refresh-token.entity';
+import { UserRole, ROLES } from '../../config/roles.config';
 
-export type UserRole =
-  | 'super_admin'
-  | 'consultant'
-  | 'doctor'
-  | 'hospital_pharmacist'
-  | 'pharmacy_technician'
-  | 'pharmacy_support_worker'
-  | 'pharmacy_support_manager'
-  | 'clinical_admin'
-  | 'prescriber';
+// Re-export UserRole for convenience
+export { UserRole } from '../../config/roles.config';
 
 @Entity('users_auth')
 export class UserEntity {
@@ -30,7 +23,7 @@ export class UserEntity {
   @Column({ name: 'password_hash' })
   passwordHash: string;
 
-  @Column({ type: 'varchar', length: 50, default: 'doctor' })
+  @Column({ type: 'varchar', length: 50, default: ROLES.DOCTOR })
   role: UserRole;
 
   @Column({ name: 'first_name' })

@@ -3,15 +3,21 @@
 import {
   Users,
   Calendar,
-  Activity,
   Pill,
-  TrendingUp,
-  Clock,
   FileText,
+  UserPlus,
+  ClipboardList,
+  Stethoscope,
   AlertCircle,
+  CheckCircle,
+  Clock,
 } from 'lucide-react';
-import { StatsCard } from '@/components/dashboard/StatsCard';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { WelcomeBanner } from '@/components/dashboard/WelcomeBanner';
+import { StatsCard } from '@/components/dashboard/StatsCard';
+import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
+import { QuickActions } from '@/components/dashboard/QuickActions';
+import { AppointmentsTable } from '@/components/dashboard/AppointmentsTable';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -20,29 +26,26 @@ export default function DashboardPage() {
     {
       title: 'Total Patients',
       value: '2,847',
-      change: '+12% from last month',
+      change: '+12.5%',
       changeType: 'positive' as const,
       icon: Users,
-      iconColor: 'text-blue-600',
-      iconBgColor: 'bg-blue-100',
+      description: 'from last month',
     },
     {
       title: "Today's Appointments",
       value: '48',
-      change: '6 pending confirmation',
-      changeType: 'neutral' as const,
+      change: '+3',
+      changeType: 'positive' as const,
       icon: Calendar,
-      iconColor: 'text-green-600',
-      iconBgColor: 'bg-green-100',
+      description: 'vs yesterday',
     },
     {
       title: 'Active Prescriptions',
       value: '1,234',
-      change: '+5% this week',
+      change: '+5.2%',
       changeType: 'positive' as const,
       icon: Pill,
-      iconColor: 'text-purple-600',
-      iconBgColor: 'bg-purple-100',
+      description: 'this week',
     },
     {
       title: 'Pending Lab Results',
@@ -50,93 +53,129 @@ export default function DashboardPage() {
       change: '8 urgent',
       changeType: 'negative' as const,
       icon: FileText,
-      iconColor: 'text-orange-600',
-      iconBgColor: 'bg-orange-100',
+      description: 'require review',
     },
   ];
 
-  const recentActivity = [
+  const activities = [
     {
       id: 1,
-      type: 'appointment',
-      message: 'New appointment scheduled with Dr. Johnson',
+      title: 'Appointment Completed',
+      description: 'Follow-up consultation with John Smith was completed successfully.',
       time: '5 minutes ago',
-      icon: Calendar,
+      icon: CheckCircle,
+      type: 'success' as const,
     },
     {
       id: 2,
-      type: 'prescription',
-      message: 'Prescription #RX-4521 approved',
-      time: '12 minutes ago',
-      icon: Pill,
+      title: 'New Patient Registered',
+      description: 'Emily Johnson has been registered as a new patient.',
+      time: '15 minutes ago',
+      icon: UserPlus,
+      type: 'default' as const,
     },
     {
       id: 3,
-      type: 'lab',
-      message: 'Lab results received for Patient #P-8842',
-      time: '25 minutes ago',
-      icon: FileText,
+      title: 'Prescription Approved',
+      description: 'Prescription #RX-4521 for Michael Brown has been approved.',
+      time: '32 minutes ago',
+      icon: Pill,
+      type: 'success' as const,
     },
     {
       id: 4,
-      type: 'alert',
-      message: 'Critical alert: Patient #P-2234 vitals update',
+      title: 'Lab Results Pending',
+      description: 'Lab results for Patient #P-2234 are awaiting review.',
       time: '1 hour ago',
+      icon: Clock,
+      type: 'warning' as const,
+    },
+    {
+      id: 5,
+      title: 'Critical Alert',
+      description: 'Patient #P-8842 vitals require immediate attention.',
+      time: '2 hours ago',
       icon: AlertCircle,
+      type: 'danger' as const,
     },
   ];
 
-  const upcomingAppointments = [
+  const quickActions = [
+    {
+      label: 'New Patient',
+      href: '/patients/new',
+      icon: UserPlus,
+      color: 'primary' as const,
+    },
+    {
+      label: 'Schedule',
+      href: '/appointments/new',
+      icon: Calendar,
+      color: 'success' as const,
+    },
+    {
+      label: 'Prescribe',
+      href: '/prescriptions/new',
+      icon: ClipboardList,
+      color: 'warning' as const,
+    },
+    {
+      label: 'Consult',
+      href: '/consultations/new',
+      icon: Stethoscope,
+      color: 'default' as const,
+    },
+  ];
+
+  const appointments = [
     {
       id: 1,
-      patient: 'John Smith',
+      patient: { name: 'John Smith' },
       time: '09:00 AM',
       type: 'Follow-up',
-      status: 'Confirmed',
+      status: 'confirmed' as const,
     },
     {
       id: 2,
-      patient: 'Emily Davis',
+      patient: { name: 'Emily Davis' },
       time: '10:30 AM',
       type: 'Consultation',
-      status: 'Pending',
+      status: 'pending' as const,
     },
     {
       id: 3,
-      patient: 'Michael Brown',
+      patient: { name: 'Michael Brown' },
       time: '11:45 AM',
       type: 'Check-up',
-      status: 'Confirmed',
+      status: 'confirmed' as const,
     },
     {
       id: 4,
-      patient: 'Sarah Wilson',
+      patient: { name: 'Sarah Wilson' },
       time: '02:00 PM',
       type: 'Lab Review',
-      status: 'Confirmed',
+      status: 'confirmed' as const,
+    },
+    {
+      id: 5,
+      patient: { name: 'Robert Taylor' },
+      time: '03:30 PM',
+      type: 'New Patient',
+      status: 'pending' as const,
     },
   ];
 
   return (
-    <div className="space-y-8">
-      {/* Welcome Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            Welcome back, {user?.firstName}!
-          </h1>
-          <p className="text-slate-600 mt-1">
-            Here&apos;s what&apos;s happening with your patients today.
-          </p>
-        </div>
-        <div className="mt-4 sm:mt-0 flex items-center space-x-2 text-sm text-slate-500">
-          <Clock className="h-4 w-4" />
-          <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-        </div>
-      </div>
+    <div className="space-y-6">
+      {/* Welcome Banner */}
+      <WelcomeBanner
+        userName={user?.firstName}
+        appointmentsToday={48}
+        pendingTasks={12}
+      />
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, index) => (
           <StatsCard key={index} {...stat} />
         ))}
@@ -144,136 +183,66 @@ export default function DashboardPage() {
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Upcoming Appointments */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Upcoming Appointments
-            </h2>
-            <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-              View all
-            </button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">
-                    Patient
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">
-                    Time
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">
-                    Type
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {upcomingAppointments.map((appointment) => (
-                  <tr
-                    key={appointment.id}
-                    className="border-b border-slate-100 hover:bg-slate-50"
-                  >
-                    <td className="py-3 px-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                          <span className="text-sm font-medium text-blue-600">
-                            {appointment.patient.charAt(0)}
-                          </span>
-                        </div>
-                        <span className="text-sm font-medium text-slate-900">
-                          {appointment.patient}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-slate-600">
-                      {appointment.time}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-slate-600">
-                      {appointment.type}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          appointment.status === 'Confirmed'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}
-                      >
-                        {appointment.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        {/* Appointments Table - Takes 2 columns */}
+        <div className="lg:col-span-2">
+          <AppointmentsTable
+            appointments={appointments}
+            onViewAll={() => console.log('View all appointments')}
+          />
         </div>
 
-        {/* Recent Activity */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Recent Activity
-            </h2>
-            <Activity className="h-5 w-5 text-slate-400" />
-          </div>
-          <div className="space-y-4">
-            {recentActivity.map((activity) => (
-              <div
-                key={activity.id}
-                className="flex items-start space-x-3 p-3 rounded-lg hover:bg-slate-50 transition-colors"
-              >
-                <div
-                  className={`p-2 rounded-lg ${
-                    activity.type === 'alert'
-                      ? 'bg-red-100'
-                      : activity.type === 'prescription'
-                        ? 'bg-purple-100'
-                        : 'bg-blue-100'
-                  }`}
-                >
-                  <activity.icon
-                    className={`h-4 w-4 ${
-                      activity.type === 'alert'
-                        ? 'text-red-600'
-                        : activity.type === 'prescription'
-                          ? 'text-purple-600'
-                          : 'text-blue-600'
-                    }`}
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-slate-900">{activity.message}</p>
-                  <p className="text-xs text-slate-500 mt-1">{activity.time}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+        {/* Quick Actions */}
+        <div>
+          <QuickActions actions={quickActions} />
         </div>
       </div>
 
-      {/* Quick Stats Bar */}
-      <div className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl p-6 text-white">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-white/20 rounded-lg">
-              <TrendingUp className="h-6 w-6" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold">Monthly Performance</h3>
-              <p className="text-blue-100">
-                Patient satisfaction rate is up 8% this month
-              </p>
+      {/* Activity Feed - Full Width */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <ActivityFeed activities={activities} maxHeight="320px" />
+        </div>
+
+        {/* Summary Card */}
+        <div className="space-y-4">
+          <div className="rounded-xl border bg-card p-6">
+            <h3 className="text-base font-semibold mb-4">Monthly Overview</h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Patients Seen</span>
+                <span className="text-sm font-medium">847</span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-2">
+                <div className="bg-primary h-2 rounded-full" style={{ width: '75%' }} />
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-sm text-muted-foreground">Appointments</span>
+                <span className="text-sm font-medium">1,234</span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-2">
+                <div className="bg-emerald-500 h-2 rounded-full" style={{ width: '85%' }} />
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-sm text-muted-foreground">Prescriptions</span>
+                <span className="text-sm font-medium">562</span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-2">
+                <div className="bg-amber-500 h-2 rounded-full" style={{ width: '60%' }} />
+              </div>
             </div>
           </div>
-          <button className="mt-4 sm:mt-0 px-4 py-2 bg-white text-blue-600 rounded-lg font-medium hover:bg-blue-50 transition-colors">
-            View Report
-          </button>
+
+          <div className="rounded-xl border bg-gradient-to-br from-slate-900 to-slate-800 p-6 text-white">
+            <h3 className="text-base font-semibold mb-2">Need Help?</h3>
+            <p className="text-sm text-slate-300 mb-4">
+              Check our documentation or contact support for assistance.
+            </p>
+            <button className="w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors">
+              View Documentation
+            </button>
+          </div>
         </div>
       </div>
     </div>
