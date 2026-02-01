@@ -35,3 +35,19 @@ export function isAdmin(role: string | undefined): boolean {
 }
 
 export const ADMIN_ROLES: UserRole[] = [ROLES.SUPER_ADMIN, ROLES.CLINICAL_ADMIN];
+
+/**
+ * Role hierarchy for permission inheritance
+ * Higher number = more privileges
+ */
+export const ROLE_HIERARCHY: Record<UserRole, number> = {
+  [ROLES.SUPER_ADMIN]: 100,
+  [ROLES.CLINICAL_ADMIN]: 90,
+  [ROLES.CONSULTANT]: 70,
+  [ROLES.DOCTOR]: 60,
+  [ROLES.PRESCRIBER]: 50,
+  [ROLES.HOSPITAL_PHARMACIST]: 40,
+  [ROLES.PHARMACY_SUPPORT_MANAGER]: 35,
+  [ROLES.PHARMACY_TECHNICIAN]: 30,
+  [ROLES.PHARMACY_SUPPORT_WORKER]: 20,
+};

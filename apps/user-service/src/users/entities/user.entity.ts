@@ -37,19 +37,19 @@ export class UserEntity {
   @Column({ name: 'is_email_verified', default: false })
   isEmailVerified: boolean;
 
-  @Column({ name: 'phone_number', length: 20, nullable: true })
+  @Column({ name: 'phone_number', type: 'varchar', length: 20, nullable: true })
   phoneNumber: string | null;
 
-  @Column({ length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   department: string | null;
 
-  @Column({ name: 'employee_id', length: 50, nullable: true })
+  @Column({ name: 'employee_id', type: 'varchar', length: 50, nullable: true })
   employeeId: string | null;
 
-  @Column({ length: 200, nullable: true })
+  @Column({ type: 'varchar', length: 200, nullable: true })
   specialization: string | null;
 
-  @Column({ name: 'license_number', length: 50, nullable: true })
+  @Column({ name: 'license_number', type: 'varchar', length: 50, nullable: true })
   licenseNumber: string | null;
 
   @Column({ name: 'last_login_at', type: 'timestamp', nullable: true })
