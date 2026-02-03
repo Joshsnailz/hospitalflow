@@ -8,7 +8,7 @@ A comprehensive, HIPAA/GDPR-compliant clinical portal covering the entire patien
 
 - **Frontend:** Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui
 - **Backend:** NestJS microservices, PostgreSQL, Redis, RabbitMQ
-- **Infrastructure:** Docker Compose, Prometheus/Grafana
+- **Infrastructure:** Local PostgreSQL, Redis, RabbitMQ, Prometheus/Grafana
 - **Monorepo:** Turborepo
 
 ## User Roles (from permissions.xlsx)
@@ -58,6 +58,27 @@ A comprehensive, HIPAA/GDPR-compliant clinical portal covering the entire patien
    - RabbitMQ consumer for async logging
    - Database: `audit_db`
 
+6. **Patient Service** (Port 3005)
+   - Patient registration with CHI Number validation
+   - Patient demographics, contacts, medical history
+   - Allergies and medical aid management
+   - Patient search functionality
+   - Database: `patient_db`
+
+7. **Clinical Service** (Port 3006)
+   - Patient encounters (outpatient, inpatient, emergency)
+   - Admissions management
+   - Discharge workflow (staged: clinical → pharmacy → approval)
+   - Clinical notes documentation
+   - Database: `clinical_db`
+
+8. **Hospital Management Service** (Port 3007)
+   - Multi-facility management (centrally managed)
+   - Departments, wards, and beds
+   - Bed assignments and availability
+   - Patient transfers (internal and external)
+   - Database: `hospital_db`
+
 ### Database Strategy
 
 - **Database-per-service** for autonomy and scaling
@@ -92,7 +113,10 @@ clinical-portal/
 │   ├── auth-service/           # Authentication
 │   ├── user-service/           # User management
 │   ├── rbac-service/           # RBAC
-│   └── audit-service/          # Audit logging
+│   ├── audit-service/          # Audit logging
+│   ├── patient-service/        # Patient management
+│   ├── clinical-service/       # Clinical encounters & discharge
+│   └── hospital-service/       # Facilities, wards, beds, transfers
 ├── packages/
 │   ├── shared-types/           # Shared TypeScript types
 │   ├── shared-config/          # ESLint, Prettier configs
@@ -100,11 +124,9 @@ clinical-portal/
 │   ├── api-client/             # Frontend API client
 │   └── rbac/                   # RBAC logic library
 ├── infrastructure/
-│   ├── docker/                 # Dockerfiles
 │   ├── monitoring/             # Prometheus/Grafana configs
-│   └── nginx/                  # Reverse proxy configs
+│   └── nginx/                  # Reverse proxy configs (production)
 ├── scripts/                    # Setup and utility scripts
-├── docker-compose.yml
 └── turbo.json
 ```
 
@@ -131,6 +153,27 @@ clinical-portal/
 ### Audit Database (`audit_db`)
 - `audit_logs` - All system actions (immutable)
 - `data_access_logs` - PHI access tracking (HIPAA)
+
+### Patient Database (`patient_db`)
+- `patients` - Core patient record (chiNumber, demographics)
+- `patient_next_of_kin` - Emergency contacts and next of kin
+- `patient_medical_history` - Known conditions, past surgeries
+- `patient_allergies` - Allergies and sensitivities
+- `patient_medical_aid` - Medical aid/insurance details (Zimbabwean context)
+
+### Clinical Database (`clinical_db`)
+- `encounters` - All patient interactions (outpatient, inpatient, emergency)
+- `admissions` - Inpatient admissions linked to encounters
+- `discharge_forms` - Staged discharge workflow
+- `clinical_notes` - Doctor/nurse notes (immutable for legal)
+
+### Hospital Database (`hospital_db`)
+- `facilities` - Multiple hospitals/clinics (centrally managed)
+- `departments` - Hospital departments per facility
+- `wards` - Ward definitions with capacity
+- `beds` - Individual bed records and status
+- `bed_assignments` - Patient-to-bed assignments (current and historical)
+- `transfers` - Internal and external patient transfers
 
 ## Frontend Architecture
 
@@ -207,13 +250,75 @@ app/
 
 ## Infrastructure
 
-### Docker Compose Services
+### Local Development Setup
 
-- **Databases:** postgres-auth, postgres-user, postgres-rbac, postgres-audit
-- **Cache/Queue:** redis, rabbitmq
-- **Services:** auth-service, user-service, rbac-service, audit-service, api-gateway
-- **Frontend:** web (Next.js)
-- **Monitoring:** prometheus, grafana
+#### Prerequisites
+- Node.js 18+ and npm
+- PostgreSQL 16 (running on localhost:5432)
+- Redis (running on localhost:6379)
+- RabbitMQ (running on localhost:5672)
+
+#### Database Setup
+Create all databases in PostgreSQL:
+```sql
+CREATE DATABASE auth_db;
+CREATE DATABASE user_db;
+CREATE DATABASE rbac_db;
+CREATE DATABASE audit_db;
+CREATE DATABASE patient_db;
+CREATE DATABASE clinical_db;
+CREATE DATABASE hospital_db;
+
+-- Create user if not exists
+CREATE USER clinical_user WITH PASSWORD 'clinical_password';
+GRANT ALL PRIVILEGES ON DATABASE auth_db TO clinical_user;
+GRANT ALL PRIVILEGES ON DATABASE user_db TO clinical_user;
+GRANT ALL PRIVILEGES ON DATABASE rbac_db TO clinical_user;
+GRANT ALL PRIVILEGES ON DATABASE audit_db TO clinical_user;
+GRANT ALL PRIVILEGES ON DATABASE patient_db TO clinical_user;
+GRANT ALL PRIVILEGES ON DATABASE clinical_db TO clinical_user;
+GRANT ALL PRIVILEGES ON DATABASE hospital_db TO clinical_user;
+```
+
+#### Running Services Locally
+```bash
+# Install dependencies (from root)
+npm install
+
+# Start individual services (each in separate terminal)
+cd apps/auth-service && npm run start:dev
+cd apps/user-service && npm run start:dev
+cd apps/rbac-service && npm run start:dev
+cd apps/audit-service && npm run start:dev
+cd apps/patient-service && npm run start:dev
+cd apps/clinical-service && npm run start:dev
+cd apps/hospital-service && npm run start:dev
+cd apps/api-gateway && npm run start:dev
+
+# Start frontend
+cd apps/web && npm run dev
+```
+
+#### Service Ports
+| Service | Port | Database |
+|---------|------|----------|
+| API Gateway | 3000 | - |
+| Auth Service | 3001 | auth_db |
+| User Service | 3002 | user_db |
+| RBAC Service | 3003 | rbac_db |
+| Audit Service | 3004 | audit_db |
+| Patient Service | 3005 | patient_db |
+| Clinical Service | 3006 | clinical_db |
+| Hospital Service | 3007 | hospital_db |
+| Web Frontend | 3100 | - |
+
+#### Infrastructure Ports
+| Service | Port |
+|---------|------|
+| PostgreSQL | 5432 |
+| Redis | 6379 |
+| RabbitMQ | 5672 |
+| RabbitMQ Management | 15672 |
 
 ### Environment Variables
 
@@ -252,13 +357,11 @@ BCRYPT_ROUNDS=12
 2. Create folder structure (apps/, packages/, infrastructure/)
 3. Set up shared packages (shared-types, shared-config, shared-utils)
 4. Configure TypeScript, ESLint, Prettier
-5. Create docker-compose.yml with all services
-6. Create .env.example with all required variables
+5. Create .env.example with all required variables
 7. Set up GitHub repository and initial commit
 
 **Critical Files:**
 - `turbo.json` - Monorepo build pipeline
-- `docker-compose.yml` - Infrastructure definition
 - `package.json` - Root dependencies and scripts
 - `.env.example` - Environment template
 
@@ -501,8 +604,9 @@ BCRYPT_ROUNDS=12
 **Goal:** Connect everything and ensure it works end-to-end
 
 ✅ **Tasks:**
-1. Start all services with `docker-compose up`
-2. Run database migrations for all services
+1. Ensure PostgreSQL, Redis, and RabbitMQ are running locally
+2. Create all databases in PostgreSQL
+3. Run database migrations for all services
 3. Seed initial data (roles, permissions, test users)
 4. Test complete authentication flow:
    - User registration
@@ -671,6 +775,9 @@ Access Swagger UI at:
 - **User Service:** http://localhost:3002/api/docs
 - **RBAC Service:** http://localhost:3003/api/docs
 - **Audit Service:** http://localhost:3004/api/docs
+- **Patient Service:** http://localhost:3005/api/docs
+- **Clinical Service:** http://localhost:3006/api/docs
+- **Hospital Service:** http://localhost:3007/api/docs
 
 ### Monitoring
 
@@ -687,10 +794,13 @@ Check service health:
 curl http://localhost:3000/health
 
 # Individual services
-curl http://localhost:3001/health  # Auth
-curl http://localhost:3002/health  # User
-curl http://localhost:3003/health  # RBAC
-curl http://localhost:3004/health  # Audit
+curl http://localhost:3001/healthcheck  # Auth
+curl http://localhost:3002/healthcheck  # User
+curl http://localhost:3003/healthcheck  # RBAC
+curl http://localhost:3004/healthcheck  # Audit
+curl http://localhost:3005/healthcheck  # Patient
+curl http://localhost:3006/healthcheck  # Clinical
+curl http://localhost:3007/healthcheck  # Hospital
 ```
 
 ## Security Checklist
@@ -713,55 +823,910 @@ Before deploying:
 - [ ] Password policy enforced
 - [ ] Session timeout configured (15 min)
 
+## Phase 6: Patient Service (Port 3005)
+
+**Goal:** Central patient registry with CHI Number validation
+
+### CHI Number Format
+```
+Format: NPPPPPPPLPP
+- N = 1-9 (cannot start with 0)
+- P = 0-9 (any digit)
+- L = A-Z excluding O, U, V
+
+Valid:   70282487G70
+Invalid: 01232323V70 (starts with 0, contains V)
+```
+
+### 6.1 Patient Service Setup
+
+**Tasks:**
+1. Initialize NestJS project in `apps/patient-service/`
+2. Set up TypeORM with patient_db connection
+3. Create database migrations for all entities
+4. Configure RabbitMQ for event publishing
+5. Configure Redis for caching
+
+### 6.2 Patient Entities
+
+**patients table:**
+```sql
+CREATE TABLE patients (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    chi_number VARCHAR(11) UNIQUE NOT NULL,  -- Format: NPPPPPPPLPP
+
+    -- Demographics
+    title VARCHAR(10),
+    first_name VARCHAR(100) NOT NULL,
+    middle_name VARCHAR(100),
+    last_name VARCHAR(100) NOT NULL,
+    date_of_birth DATE NOT NULL,
+    gender VARCHAR(20) NOT NULL,
+    national_id VARCHAR(50),
+    passport_number VARCHAR(50),
+
+    -- Contact
+    email VARCHAR(255),
+    phone_primary VARCHAR(20),
+    phone_secondary VARCHAR(20),
+
+    -- Address
+    address_line_1 VARCHAR(255),
+    address_line_2 VARCHAR(255),
+    city VARCHAR(100),
+    province VARCHAR(100),
+    postal_code VARCHAR(20),
+    country VARCHAR(100) DEFAULT 'Zimbabwe',
+
+    -- Status
+    is_active BOOLEAN DEFAULT true,
+    is_deceased BOOLEAN DEFAULT false,
+    deceased_date DATE,
+
+    -- Audit
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    created_by UUID,
+    updated_by UUID
+);
+```
+
+**patient_next_of_kin table:**
+```sql
+CREATE TABLE patient_next_of_kin (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID NOT NULL REFERENCES patients(id),
+    relationship VARCHAR(50) NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    phone_primary VARCHAR(20) NOT NULL,
+    phone_secondary VARCHAR(20),
+    email VARCHAR(255),
+    address VARCHAR(500),
+    is_primary BOOLEAN DEFAULT false,
+    is_emergency_contact BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**patient_medical_history table:**
+```sql
+CREATE TABLE patient_medical_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID NOT NULL REFERENCES patients(id),
+    condition_type VARCHAR(50) NOT NULL,      -- chronic, past_surgery, family_history
+    condition_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    diagnosed_date DATE,
+    is_current BOOLEAN DEFAULT true,
+    severity VARCHAR(20),                     -- mild, moderate, severe
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    recorded_by UUID
+);
+```
+
+**patient_allergies table:**
+```sql
+CREATE TABLE patient_allergies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID NOT NULL REFERENCES patients(id),
+    allergy_type VARCHAR(50) NOT NULL,        -- drug, food, environmental, other
+    allergen VARCHAR(255) NOT NULL,
+    reaction VARCHAR(500),
+    severity VARCHAR(20) NOT NULL,            -- mild, moderate, severe, life_threatening
+    is_confirmed BOOLEAN DEFAULT false,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    recorded_by UUID
+);
+```
+
+**patient_medical_aid table:**
+```sql
+CREATE TABLE patient_medical_aid (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID NOT NULL REFERENCES patients(id),
+    provider_name VARCHAR(255) NOT NULL,      -- CIMAS, PSMAS, First Mutual, etc.
+    scheme_name VARCHAR(255),
+    member_number VARCHAR(100) NOT NULL,
+    principal_member_name VARCHAR(255),
+    relationship_to_principal VARCHAR(50),    -- Self, Spouse, Child
+    coverage_type VARCHAR(50),                -- Individual, Family, Corporate
+    effective_date DATE,
+    expiry_date DATE,
+    is_active BOOLEAN DEFAULT true,
+    provider_phone VARCHAR(20),
+    provider_email VARCHAR(255),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+### 6.3 Patient API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/patients` | Register new patient |
+| GET | `/patients` | Search patients (query params) |
+| GET | `/patients/:id` | Get patient by internal ID |
+| GET | `/patients/chi/:chiNumber` | Get patient by CHI Number |
+| PATCH | `/patients/:id` | Update patient demographics |
+| DELETE | `/patients/:id` | Soft delete (deactivate) patient |
+| GET | `/patients/:id/next-of-kin` | Get patient's contacts |
+| POST | `/patients/:id/next-of-kin` | Add next of kin |
+| PATCH | `/patients/:id/next-of-kin/:nokId` | Update contact |
+| DELETE | `/patients/:id/next-of-kin/:nokId` | Remove contact |
+| GET | `/patients/:id/medical-history` | Get medical history |
+| POST | `/patients/:id/medical-history` | Add medical condition |
+| PATCH | `/patients/:id/medical-history/:historyId` | Update condition |
+| GET | `/patients/:id/allergies` | Get allergies |
+| POST | `/patients/:id/allergies` | Add allergy |
+| PATCH | `/patients/:id/allergies/:allergyId` | Update allergy |
+| DELETE | `/patients/:id/allergies/:allergyId` | Remove allergy |
+| GET | `/patients/:id/medical-aid` | Get medical aid details |
+| POST | `/patients/:id/medical-aid` | Add medical aid |
+| PATCH | `/patients/:id/medical-aid/:aidId` | Update medical aid |
+| DELETE | `/patients/:id/medical-aid/:aidId` | Remove medical aid |
+| GET | `/patients/validate-chi/:chiNumber` | Validate CHI Number format |
+
+### 6.4 CHI Number Validation
+
+```typescript
+/**
+ * CHI Number Format: NPPPPPPPLPP
+ * Regex: ^[1-9]\d{7}[A-NP-TV-Z]\d{2}$
+ */
+function validateChiNumber(chi: string): boolean {
+  if (!chi || chi.length !== 11) return false;
+  const pattern = /^[1-9]\d{7}[A-NP-TV-Z]\d{2}$/;
+  return pattern.test(chi.toUpperCase());
+}
+```
+
+### 6.5 Patient Service Structure
+
+```
+apps/patient-service/
+├── src/
+│   ├── main.ts
+│   ├── app.module.ts
+│   ├── config/
+│   │   └── roles.config.ts
+│   ├── database/
+│   │   ├── data-source.ts
+│   │   └── migrations/
+│   ├── auth/                          # JWT validation
+│   ├── health/
+│   ├── patients/
+│   │   ├── patients.module.ts
+│   │   ├── patients.controller.ts
+│   │   ├── patients.service.ts
+│   │   ├── entities/
+│   │   │   ├── patient.entity.ts
+│   │   │   ├── patient-next-of-kin.entity.ts
+│   │   │   ├── patient-medical-history.entity.ts
+│   │   │   ├── patient-allergy.entity.ts
+│   │   │   └── patient-medical-aid.entity.ts
+│   │   ├── dto/
+│   │   └── validators/
+│   │       └── chi-number.validator.ts
+│   └── rabbitmq/
+│       └── patient-events.service.ts
+├── package.json
+├── tsconfig.json
+├── nest-cli.json
+└── .env
+```
+
+---
+
+## Phase 7: Hospital Management Service (Port 3007)
+
+**Goal:** Multi-facility management with wards, beds, and transfers
+
+### 7.1 Hospital Service Setup
+
+**Tasks:**
+1. Initialize NestJS project in `apps/hospital-service/`
+2. Set up TypeORM with hospital_db connection
+3. Create database migrations
+4. Configure RabbitMQ for event publishing
+5. Configure Redis for caching ward availability
+
+### 7.2 Hospital Entities
+
+**facilities table:**
+```sql
+CREATE TABLE facilities (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code VARCHAR(20) UNIQUE NOT NULL,         -- e.g., "PGH", "MPH"
+    name VARCHAR(255) NOT NULL,
+    facility_type VARCHAR(50) NOT NULL,       -- hospital, clinic, satellite
+    address_line_1 VARCHAR(255),
+    address_line_2 VARCHAR(255),
+    city VARCHAR(100),
+    province VARCHAR(100),
+    country VARCHAR(100) DEFAULT 'Zimbabwe',
+    phone_main VARCHAR(20),
+    phone_emergency VARCHAR(20),
+    email VARCHAR(255),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**departments table:**
+```sql
+CREATE TABLE departments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    facility_id UUID NOT NULL REFERENCES facilities(id),
+    code VARCHAR(20) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    department_type VARCHAR(50),              -- clinical, administrative, support
+    description TEXT,
+    head_of_department_id UUID,
+    phone VARCHAR(20),
+    email VARCHAR(255),
+    location VARCHAR(255),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(facility_id, code)
+);
+```
+
+**wards table:**
+```sql
+CREATE TABLE wards (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    facility_id UUID NOT NULL REFERENCES facilities(id),
+    department_id UUID REFERENCES departments(id),
+    code VARCHAR(20) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    ward_type VARCHAR(50) NOT NULL,           -- general, icu, maternity, pediatric, psychiatric
+    floor VARCHAR(20),
+    building VARCHAR(100),
+    total_beds INTEGER NOT NULL DEFAULT 0,
+    nurse_station_phone VARCHAR(20),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(facility_id, code)
+);
+```
+
+**beds table:**
+```sql
+CREATE TABLE beds (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ward_id UUID NOT NULL REFERENCES wards(id),
+    bed_number VARCHAR(20) NOT NULL,
+    bed_type VARCHAR(50) NOT NULL,            -- standard, electric, icu, crib
+    status VARCHAR(20) NOT NULL DEFAULT 'available',  -- available, occupied, maintenance, reserved
+    features JSONB,                           -- { "oxygen": true, "suction": true }
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(ward_id, bed_number)
+);
+```
+
+**bed_assignments table:**
+```sql
+CREATE TABLE bed_assignments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    bed_id UUID NOT NULL REFERENCES beds(id),
+    patient_id UUID NOT NULL,
+    admission_id UUID NOT NULL,
+    assigned_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    released_at TIMESTAMP,
+    assigned_by UUID NOT NULL,
+    released_by UUID,
+    notes TEXT,
+    is_current BOOLEAN DEFAULT true
+);
+```
+
+**transfers table:**
+```sql
+CREATE TABLE transfers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID NOT NULL,
+    admission_id UUID,
+    transfer_type VARCHAR(20) NOT NULL,       -- internal, external_out, external_in
+
+    -- Source
+    source_facility_id UUID REFERENCES facilities(id),
+    source_ward_id UUID REFERENCES wards(id),
+    source_bed_id UUID REFERENCES beds(id),
+    source_external_facility VARCHAR(255),
+
+    -- Destination
+    destination_facility_id UUID REFERENCES facilities(id),
+    destination_ward_id UUID REFERENCES wards(id),
+    destination_bed_id UUID REFERENCES beds(id),
+    destination_external_facility VARCHAR(255),
+
+    -- Status
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',  -- pending, in_transit, completed, cancelled
+
+    -- Timing
+    requested_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    approved_at TIMESTAMP,
+    departed_at TIMESTAMP,
+    arrived_at TIMESTAMP,
+
+    -- People
+    requested_by UUID NOT NULL,
+    approved_by UUID,
+
+    reason TEXT,
+    clinical_notes TEXT,
+
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+### 7.3 Hospital API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| **Facilities** | | |
+| GET | `/facilities` | List all facilities |
+| POST | `/facilities` | Create facility |
+| GET | `/facilities/:id` | Get facility details |
+| PATCH | `/facilities/:id` | Update facility |
+| **Departments** | | |
+| GET | `/facilities/:facilityId/departments` | List departments |
+| POST | `/facilities/:facilityId/departments` | Create department |
+| PATCH | `/departments/:id` | Update department |
+| **Wards** | | |
+| GET | `/facilities/:facilityId/wards` | List wards in facility |
+| POST | `/facilities/:facilityId/wards` | Create ward |
+| GET | `/wards/:id` | Get ward details with bed availability |
+| PATCH | `/wards/:id` | Update ward |
+| GET | `/wards/:id/beds` | List beds in ward |
+| **Beds** | | |
+| POST | `/wards/:wardId/beds` | Create bed |
+| PATCH | `/beds/:id` | Update bed |
+| GET | `/beds/:id` | Get bed details |
+| POST | `/beds/:id/assign` | Assign patient to bed |
+| POST | `/beds/:id/release` | Release bed |
+| GET | `/beds/available` | Find available beds |
+| **Transfers** | | |
+| POST | `/transfers` | Request transfer |
+| GET | `/transfers` | List transfers |
+| GET | `/transfers/:id` | Get transfer details |
+| PATCH | `/transfers/:id/approve` | Approve transfer |
+| PATCH | `/transfers/:id/depart` | Mark departed |
+| PATCH | `/transfers/:id/arrive` | Mark arrived/complete |
+| PATCH | `/transfers/:id/cancel` | Cancel transfer |
+
+### 7.4 Hospital Service Structure
+
+```
+apps/hospital-service/
+├── src/
+│   ├── main.ts
+│   ├── app.module.ts
+│   ├── config/
+│   ├── database/
+│   ├── auth/
+│   ├── health/
+│   ├── facilities/
+│   │   ├── facilities.module.ts
+│   │   ├── facilities.controller.ts
+│   │   ├── facilities.service.ts
+│   │   └── entities/
+│   ├── departments/
+│   ├── wards/
+│   ├── beds/
+│   ├── transfers/
+│   └── rabbitmq/
+├── package.json
+├── tsconfig.json
+├── nest-cli.json
+└── .env
+```
+
+---
+
+## Phase 8: Clinical Service (Port 3006)
+
+**Goal:** Encounters, admissions, and discharge workflow management
+
+### 8.1 Clinical Service Setup
+
+**Tasks:**
+1. Initialize NestJS project in `apps/clinical-service/`
+2. Set up TypeORM with clinical_db connection
+3. Create database migrations
+4. Configure RabbitMQ consumer for patient/hospital events
+5. Configure Redis for caching
+
+### 8.2 Clinical Entities
+
+**encounters table:**
+```sql
+CREATE TABLE encounters (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    encounter_number VARCHAR(50) UNIQUE NOT NULL,
+    patient_id UUID NOT NULL,
+    facility_id UUID NOT NULL,
+    encounter_type VARCHAR(20) NOT NULL,      -- outpatient, inpatient, emergency, day_case
+    encounter_status VARCHAR(20) NOT NULL DEFAULT 'active',  -- active, discharged, transferred, cancelled
+    check_in_time TIMESTAMP NOT NULL DEFAULT NOW(),
+    check_out_time TIMESTAMP,
+    chief_complaint TEXT,
+    presenting_symptoms TEXT,
+    triage_level VARCHAR(20),
+    attending_physician_id UUID,
+    department_id UUID,
+    referral_source VARCHAR(100),
+    referral_notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    created_by UUID NOT NULL
+);
+```
+
+**admissions table:**
+```sql
+CREATE TABLE admissions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    admission_number VARCHAR(50) UNIQUE NOT NULL,
+    encounter_id UUID NOT NULL REFERENCES encounters(id),
+    patient_id UUID NOT NULL,
+    admission_type VARCHAR(20) NOT NULL,      -- emergency, elective, transfer
+    admission_status VARCHAR(20) NOT NULL DEFAULT 'admitted',  -- admitted, discharged, transferred
+    admitted_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    discharged_at TIMESTAMP,
+    facility_id UUID NOT NULL,
+    ward_id UUID,
+    bed_id UUID,
+    admitting_physician_id UUID NOT NULL,
+    attending_physician_id UUID,
+    admitting_diagnosis TEXT,
+    expected_length_of_stay INTEGER,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**discharge_forms table (staged workflow):**
+```sql
+CREATE TABLE discharge_forms (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    admission_id UUID NOT NULL REFERENCES admissions(id),
+    patient_id UUID NOT NULL,
+
+    -- Status: draft → clinical_review → pharmacy_review → pending_approval → approved → completed
+    status VARCHAR(30) NOT NULL DEFAULT 'draft',
+
+    -- Clinical section
+    discharge_diagnosis TEXT,
+    procedures_performed TEXT,
+    clinical_summary TEXT,
+    complications TEXT,
+    follow_up_instructions TEXT,
+    follow_up_date DATE,
+    follow_up_department VARCHAR(100),
+    clinical_reviewed_by UUID,
+    clinical_reviewed_at TIMESTAMP,
+
+    -- Pharmacy section
+    discharge_medications JSONB,
+    medication_instructions TEXT,
+    pharmacy_reviewed_by UUID,
+    pharmacy_reviewed_at TIMESTAMP,
+
+    -- Approval
+    approved_by UUID,
+    approved_at TIMESTAMP,
+
+    -- Completion
+    completed_by UUID,
+    completed_at TIMESTAMP,
+
+    -- Outcome
+    discharge_disposition VARCHAR(50),        -- home, transfer, deceased, against_advice
+    notes TEXT,
+
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**clinical_notes table (immutable):**
+```sql
+CREATE TABLE clinical_notes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    encounter_id UUID NOT NULL REFERENCES encounters(id),
+    patient_id UUID NOT NULL,
+    note_type VARCHAR(50) NOT NULL,           -- progress, consultation, nursing, procedure
+    note_title VARCHAR(255),
+    content TEXT NOT NULL,
+    authored_by UUID NOT NULL,
+    authored_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    is_amendment BOOLEAN DEFAULT false,
+    amends_note_id UUID REFERENCES clinical_notes(id),
+    created_at TIMESTAMP DEFAULT NOW()
+    -- No updated_at - notes are immutable for legal reasons
+);
+```
+
+### 8.3 Discharge Workflow States
+
+```
+┌─────────────────────────────────────────────┐
+│                   DRAFT                      │
+│   (Doctor starts filling discharge form)     │
+└─────────────────────┬───────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────┐
+│             CLINICAL_REVIEW                  │
+│   (Appears on Clinical Discharge List)       │
+│   (Doctor completes clinical section)        │
+└─────────────────────┬───────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────┐
+│             PHARMACY_REVIEW                  │
+│   (Appears on Pharmacy Discharge List)       │
+│   (Pharmacist reviews medications)           │
+└─────────────────────┬───────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────┐
+│            PENDING_APPROVAL                  │
+│   (Senior clinician approval)                │
+└─────────────────────┬───────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────┐
+│               APPROVED                       │
+│   (Ready for patient release)                │
+└─────────────────────┬───────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────┐
+│              COMPLETED                       │
+│   (Patient has left, bed released)           │
+└─────────────────────────────────────────────┘
+```
+
+### 8.4 Clinical API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| **Encounters** | | |
+| POST | `/encounters` | Create encounter (walk-in, appointment) |
+| GET | `/encounters` | Search encounters |
+| GET | `/encounters/:id` | Get encounter details |
+| PATCH | `/encounters/:id` | Update encounter |
+| GET | `/patients/:patientId/encounters` | Patient's encounter history |
+| **Admissions** | | |
+| POST | `/admissions` | Create admission from encounter |
+| GET | `/admissions` | List admissions (active, by ward, etc.) |
+| GET | `/admissions/:id` | Get admission details |
+| PATCH | `/admissions/:id` | Update admission |
+| GET | `/patients/:patientId/admissions` | Patient's admission history |
+| **Discharge** | | |
+| POST | `/admissions/:admissionId/discharge` | Create discharge form |
+| GET | `/discharge-forms/:id` | Get discharge form |
+| PATCH | `/discharge-forms/:id` | Update discharge form |
+| PATCH | `/discharge-forms/:id/clinical-review` | Submit clinical review |
+| PATCH | `/discharge-forms/:id/pharmacy-review` | Submit pharmacy review |
+| PATCH | `/discharge-forms/:id/approve` | Approve discharge |
+| PATCH | `/discharge-forms/:id/complete` | Complete discharge |
+| GET | `/discharge-forms/clinical-list` | Pending clinical reviews |
+| GET | `/discharge-forms/pharmacy-list` | Pending pharmacy reviews |
+| **Clinical Notes** | | |
+| POST | `/encounters/:encounterId/notes` | Add clinical note |
+| GET | `/encounters/:encounterId/notes` | Get notes for encounter |
+| POST | `/clinical-notes/:id/amend` | Amend a note |
+
+### 8.5 Clinical Service Structure
+
+```
+apps/clinical-service/
+├── src/
+│   ├── main.ts
+│   ├── app.module.ts
+│   ├── config/
+│   ├── database/
+│   ├── auth/
+│   ├── health/
+│   ├── encounters/
+│   ├── admissions/
+│   ├── discharge/
+│   ├── clinical-notes/
+│   └── rabbitmq/
+│       ├── clinical-events.service.ts
+│       └── clinical-consumer.service.ts
+├── package.json
+├── tsconfig.json
+├── nest-cli.json
+└── .env
+```
+
+---
+
+## Phase 9: Event Bus & Integration
+
+**Goal:** Connect all services with event-driven communication
+
+### 9.1 RabbitMQ Events
+
+| Event | Publisher | Subscribers |
+|-------|-----------|-------------|
+| `patient.created` | Patient Service | Clinical, Hospital, Audit |
+| `patient.updated` | Patient Service | Clinical, Hospital, Audit |
+| `patient.accessed` | All Services | Audit (for Recent Patients) |
+| `encounter.created` | Clinical Service | Hospital, Audit |
+| `admission.created` | Clinical Service | Hospital, Audit |
+| `discharge.completed` | Clinical Service | Hospital, Audit |
+| `bed.assigned` | Hospital Service | Clinical, Audit |
+| `bed.released` | Hospital Service | Clinical, Audit |
+| `transfer.completed` | Hospital Service | Clinical, Audit |
+
+### 9.2 Redis Caching
+
+| Cache Key | Data | TTL | Purpose |
+|-----------|------|-----|---------|
+| `patient:{chiNumber}` | Basic patient info | 15 min | Quick lookups |
+| `user:{userId}:recent_patients` | Recent 50 chiNumbers | 10 min | Recent patients list |
+| `ward:{wardId}:availability` | Bed availability | 5 min | Admission screen |
+| `facility:{facilityId}:wards` | Ward list | 30 min | Facility overview |
+
+---
+
+## Phase 10: Frontend Updates
+
+**Goal:** Update sidebar and create patient-centric pages
+
+### 10.1 Sidebar Menu Structure
+
+```typescript
+const menuItems = [
+  {
+    id: 'home',
+    label: 'Home',
+    icon: 'Home',
+    path: '/dashboard',
+  },
+  {
+    id: 'patient-list',
+    label: 'Patient List',
+    icon: 'Users',
+    type: 'dropdown',
+    children: [
+      { id: 'recent-patients', label: 'Recent Patients', path: '/patients/recent' },
+      { id: 'clinical-discharge', label: 'Clinical Discharge List', path: '/discharge/clinical' },
+      { id: 'pharmacy-discharge', label: 'Pharmacy Discharge List', path: '/discharge/pharmacy' },
+    ],
+  },
+  {
+    id: 'patient-search',
+    label: 'Patient Search',
+    icon: 'Search',
+    path: '/patients/search',
+  },
+  {
+    id: 'clinical-apps',
+    label: 'Clinical Apps',
+    icon: 'Stethoscope',
+    type: 'dropdown',
+    children: [
+      { id: 'clinical-imaging', label: 'Clinical Imaging', path: '/clinical/imaging' },
+      { id: 'controlled-drugs', label: 'Controlled Drugs', path: '/clinical/controlled-drugs' },
+      { id: 'emergency-care', label: 'Emergency Care Services', path: '/clinical/emergency' },
+      { id: 'continued-care', label: 'Continued Care', path: '/clinical/continued-care' },
+    ],
+  },
+  {
+    id: 'business-apps',
+    label: 'Business Apps',
+    icon: 'Briefcase',
+    type: 'section',
+    children: [
+      { id: 'helpdesk', label: 'Helpdesk', path: '/business/helpdesk' },
+    ],
+  },
+  {
+    id: 'admin',
+    label: 'Admin',
+    icon: 'Settings',
+    type: 'section',
+    children: [
+      { id: 'user-management', label: 'User Management', path: '/admin/users' },
+      { id: 'settings', label: 'Settings', path: '/admin/settings' },
+      { id: 'audit-trails', label: 'Audit Trails', path: '/admin/audit' },
+    ],
+  },
+];
+```
+
+### 10.2 New Pages
+
+| Page | Path | Description |
+|------|------|-------------|
+| Recent Patients | `/patients/recent` | User's recently accessed patients (top 50 from audit) |
+| Patient Search | `/patients/search` | Search by CHI, name, DOB |
+| Patient Registration | `/patients/register` | New patient form with CHI validation |
+| Patient Profile | `/patients/:chiNumber` | Full patient details with tabs |
+| Clinical Discharge List | `/discharge/clinical` | Pending clinical reviews |
+| Pharmacy Discharge List | `/discharge/pharmacy` | Pending pharmacy reviews |
+| Clinical Imaging | `/clinical/imaging` | Placeholder |
+| Controlled Drugs | `/clinical/controlled-drugs` | Placeholder |
+| Emergency Care | `/clinical/emergency` | Placeholder |
+| Continued Care | `/clinical/continued-care` | Placeholder |
+| Helpdesk | `/business/helpdesk` | Placeholder |
+| Audit Trails | `/admin/audit` | View audit logs |
+
+---
+
+## Phase 11: API Gateway Updates
+
+**Goal:** Add routes for new services
+
+### 11.1 New Routes
+
+```typescript
+// Patient Service routes
+'/api/patients/*' → patient-service:3005
+
+// Clinical Service routes
+'/api/encounters/*' → clinical-service:3006
+'/api/admissions/*' → clinical-service:3006
+'/api/discharge-forms/*' → clinical-service:3006
+'/api/clinical-notes/*' → clinical-service:3006
+
+// Hospital Management routes
+'/api/facilities/*' → hospital-service:3007
+'/api/departments/*' → hospital-service:3007
+'/api/wards/*' → hospital-service:3007
+'/api/beds/*' → hospital-service:3007
+'/api/transfers/*' → hospital-service:3007
+```
+
+---
+
+## New Environment Variables
+
+### Patient Service (.env)
+```bash
+NODE_ENV=development
+PORT=3005
+
+PATIENT_DB_HOST=localhost
+PATIENT_DB_PORT=5432
+PATIENT_DB_USER=clinical_user
+PATIENT_DB_PASSWORD=clinical_password
+PATIENT_DB_NAME=patient_db
+
+JWT_SECRET=<same-as-auth-service>
+
+RABBITMQ_URL=amqp://clinical_user:password@localhost:5672
+REDIS_URL=redis://localhost:6379
+
+CORS_ORIGIN=http://localhost:3100
+```
+
+### Clinical Service (.env)
+```bash
+NODE_ENV=development
+PORT=3006
+
+CLINICAL_DB_HOST=localhost
+CLINICAL_DB_PORT=5432
+CLINICAL_DB_USER=clinical_user
+CLINICAL_DB_PASSWORD=clinical_password
+CLINICAL_DB_NAME=clinical_db
+
+JWT_SECRET=<same-as-auth-service>
+
+RABBITMQ_URL=amqp://clinical_user:password@localhost:5672
+REDIS_URL=redis://localhost:6379
+
+CORS_ORIGIN=http://localhost:3100
+```
+
+### Hospital Service (.env)
+```bash
+NODE_ENV=development
+PORT=3007
+
+HOSPITAL_DB_HOST=localhost
+HOSPITAL_DB_PORT=5432
+HOSPITAL_DB_USER=clinical_user
+HOSPITAL_DB_PASSWORD=clinical_password
+HOSPITAL_DB_NAME=hospital_db
+
+JWT_SECRET=<same-as-auth-service>
+
+RABBITMQ_URL=amqp://clinical_user:password@localhost:5672
+REDIS_URL=redis://localhost:6379
+
+CORS_ORIGIN=http://localhost:3100
+```
+
+---
+
+## Implementation Order Summary
+
+| Phase | Service/Task | Dependencies |
+|-------|--------------|--------------|
+| 6 | Patient Service | Phases 0-5 complete |
+| 7 | Hospital Management Service | None (parallel with Phase 6) |
+| 8 | Clinical Service | Phases 6 & 7 complete |
+| 9 | Event Bus Integration | Phases 6-8 complete |
+| 10 | Frontend Updates | Phases 6-9 complete |
+| 11 | API Gateway Updates | Phases 6-8 complete |
+
+---
+
 ## Next Steps (Future Modules)
 
-After skeleton is complete, implement in order:
+After core clinical services are complete, implement:
 
-1. **Patient Management Module**
-   - Patient registration and demographics
-   - Medical history
-   - Insurance information
-
-2. **Appointment Scheduling**
+1. **Appointment Scheduling**
    - Calendar management
    - Doctor availability
    - Booking system
 
-3. **Electronic Medical Records (EMR)**
-   - Clinical documentation
-   - Visit notes
-   - Treatment plans
-
-4. **Lab Orders & Results**
+2. **Lab Orders & Results**
    - Order tests
    - View results
    - Integration with lab systems
 
-5. **Medication Management**
+3. **Medication Management**
    - Prescription writing
    - Medication tracking
-   - Pharmacy integration
+   - Controlled drugs register
 
-6. **Discharge Planning (EDC)**
-   - Implement full workflow from permissions.xlsx
-   - Multi-stage approval process
-   - Pharmacy integration
+4. **Clinical Imaging Module**
+   - Imaging requests
+   - Results viewing
+   - PACS integration
 
-Each module follows the same pattern:
-1. Create microservice
-2. Define database schema
-3. Add API endpoints
-4. Integrate with API Gateway
-5. Add RBAC permissions
-6. Build frontend UI
-7. Add audit logging
-8. Test and deploy
+5. **Reporting & Analytics**
+   - Operational dashboards
+   - HIPAA compliance reports
+   - Custom report builder
 
 ## Critical Files Reference
 
 ### Infrastructure
 - `turbo.json` - Monorepo configuration
-- `docker-compose.yml` - Service orchestration
 - `.env.example` - Environment template
 
 ### API Gateway
@@ -776,12 +1741,33 @@ Each module follows the same pattern:
 - `apps/rbac-service/src/database/migrations/001_initial.ts` - RBAC schema
 - `apps/rbac-service/src/database/seeds/initial-roles.seed.ts` - Initial roles
 
+### Audit Service
+- `apps/audit-service/src/audit/audit.service.ts` - Audit logging logic
+- `apps/audit-service/src/rabbitmq/audit-consumer.service.ts` - RabbitMQ consumer
+
+### Patient Service
+- `apps/patient-service/src/patients/patients.service.ts` - Patient management
+- `apps/patient-service/src/patients/validators/chi-number.validator.ts` - CHI validation
+- `apps/patient-service/src/database/migrations/001_initial.ts` - Patient schema
+
+### Clinical Service
+- `apps/clinical-service/src/encounters/encounters.service.ts` - Encounter management
+- `apps/clinical-service/src/discharge/discharge.service.ts` - Discharge workflow
+- `apps/clinical-service/src/database/migrations/001_initial.ts` - Clinical schema
+
+### Hospital Service
+- `apps/hospital-service/src/facilities/facilities.service.ts` - Facility management
+- `apps/hospital-service/src/beds/beds.service.ts` - Bed management
+- `apps/hospital-service/src/transfers/transfers.service.ts` - Transfer workflow
+- `apps/hospital-service/src/database/migrations/001_initial.ts` - Hospital schema
+
 ### Frontend
 - `apps/web/src/lib/auth/AuthProvider.tsx` - Auth context
 - `apps/web/src/lib/api/client.ts` - API client
 - `apps/web/src/app/page.tsx` - Landing page
 - `apps/web/src/app/(auth)/login/page.tsx` - Login page
 - `apps/web/src/app/(dashboard)/layout.tsx` - Dashboard layout
+- `apps/web/src/components/layout/Sidebar.tsx` - Sidebar with menu structure
 
 ### Shared Packages
 - `packages/shared-types/src/index.ts` - Shared types

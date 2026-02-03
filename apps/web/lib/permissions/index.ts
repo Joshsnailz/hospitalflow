@@ -52,17 +52,30 @@ export const ALL_ROLES: UserRole[] = Object.values(ROLES);
 // ============================================
 
 export const NAV_ITEMS = {
+  // Home
   DASHBOARD: 'dashboard',
-  PATIENTS: 'patients',
-  APPOINTMENTS: 'appointments',
-  RECORDS: 'records',
-  PRESCRIPTIONS: 'prescriptions',
-  LAB_RESULTS: 'lab-results',
-  VITALS: 'vitals',
-  CONSULTATIONS: 'consultations',
+
+  // Patient List (dropdown)
+  RECENT_PATIENTS: 'recent-patients',
+  CLINICAL_DISCHARGE: 'clinical-discharge',
+  PHARMACY_DISCHARGE: 'pharmacy-discharge',
+
+  // Patient Search
+  PATIENT_SEARCH: 'patient-search',
+
+  // Clinical Apps (dropdown)
+  CLINICAL_IMAGING: 'clinical-imaging',
+  CONTROLLED_DRUGS: 'controlled-drugs',
+  EMERGENCY_CARE: 'emergency-care',
+  CONTINUED_CARE: 'continued-care',
+
+  // Business Apps
+  HELPDESK: 'helpdesk',
+
+  // Admin
   USERS: 'users',
-  DEPARTMENTS: 'departments',
   SETTINGS: 'settings',
+  AUDIT_TRAILS: 'audit-trails',
 } as const;
 
 export type NavItemId = (typeof NAV_ITEMS)[keyof typeof NAV_ITEMS];
@@ -85,60 +98,69 @@ export const ROLE_PERMISSIONS: Record<UserRole, NavItemId[]> = {
   // Full clinical access, no admin
   [ROLES.CONSULTANT]: [
     NAV_ITEMS.DASHBOARD,
-    NAV_ITEMS.PATIENTS,
-    NAV_ITEMS.APPOINTMENTS,
-    NAV_ITEMS.RECORDS,
-    NAV_ITEMS.PRESCRIPTIONS,
-    NAV_ITEMS.LAB_RESULTS,
-    NAV_ITEMS.VITALS,
-    NAV_ITEMS.CONSULTATIONS,
+    NAV_ITEMS.RECENT_PATIENTS,
+    NAV_ITEMS.CLINICAL_DISCHARGE,
+    NAV_ITEMS.PATIENT_SEARCH,
+    NAV_ITEMS.CLINICAL_IMAGING,
+    NAV_ITEMS.CONTROLLED_DRUGS,
+    NAV_ITEMS.EMERGENCY_CARE,
+    NAV_ITEMS.CONTINUED_CARE,
+    NAV_ITEMS.HELPDESK,
   ],
   [ROLES.DOCTOR]: [
     NAV_ITEMS.DASHBOARD,
-    NAV_ITEMS.PATIENTS,
-    NAV_ITEMS.APPOINTMENTS,
-    NAV_ITEMS.RECORDS,
-    NAV_ITEMS.PRESCRIPTIONS,
-    NAV_ITEMS.LAB_RESULTS,
-    NAV_ITEMS.VITALS,
-    NAV_ITEMS.CONSULTATIONS,
+    NAV_ITEMS.RECENT_PATIENTS,
+    NAV_ITEMS.CLINICAL_DISCHARGE,
+    NAV_ITEMS.PATIENT_SEARCH,
+    NAV_ITEMS.CLINICAL_IMAGING,
+    NAV_ITEMS.CONTROLLED_DRUGS,
+    NAV_ITEMS.EMERGENCY_CARE,
+    NAV_ITEMS.CONTINUED_CARE,
+    NAV_ITEMS.HELPDESK,
   ],
   [ROLES.PRESCRIBER]: [
     NAV_ITEMS.DASHBOARD,
-    NAV_ITEMS.PATIENTS,
-    NAV_ITEMS.APPOINTMENTS,
-    NAV_ITEMS.RECORDS,
-    NAV_ITEMS.PRESCRIPTIONS,
-    NAV_ITEMS.LAB_RESULTS,
-    NAV_ITEMS.VITALS,
+    NAV_ITEMS.RECENT_PATIENTS,
+    NAV_ITEMS.CLINICAL_DISCHARGE,
+    NAV_ITEMS.PATIENT_SEARCH,
+    NAV_ITEMS.CONTROLLED_DRUGS,
+    NAV_ITEMS.HELPDESK,
   ],
 
   // ========== PHARMACY ROLES ==========
   // Pharmacy-focused access
   [ROLES.HOSPITAL_PHARMACIST]: [
     NAV_ITEMS.DASHBOARD,
-    NAV_ITEMS.PATIENTS,
-    NAV_ITEMS.PRESCRIPTIONS,
-    NAV_ITEMS.LAB_RESULTS,
+    NAV_ITEMS.RECENT_PATIENTS,
+    NAV_ITEMS.PHARMACY_DISCHARGE,
+    NAV_ITEMS.PATIENT_SEARCH,
+    NAV_ITEMS.CONTROLLED_DRUGS,
+    NAV_ITEMS.HELPDESK,
   ],
   [ROLES.PHARMACY_SUPPORT_MANAGER]: [
     NAV_ITEMS.DASHBOARD,
-    NAV_ITEMS.PATIENTS,
-    NAV_ITEMS.PRESCRIPTIONS,
+    NAV_ITEMS.RECENT_PATIENTS,
+    NAV_ITEMS.PHARMACY_DISCHARGE,
+    NAV_ITEMS.PATIENT_SEARCH,
+    NAV_ITEMS.HELPDESK,
   ],
   [ROLES.PHARMACY_TECHNICIAN]: [
     NAV_ITEMS.DASHBOARD,
-    NAV_ITEMS.PRESCRIPTIONS,
+    NAV_ITEMS.PHARMACY_DISCHARGE,
+    NAV_ITEMS.PATIENT_SEARCH,
+    NAV_ITEMS.HELPDESK,
   ],
   [ROLES.PHARMACY_SUPPORT_WORKER]: [
     NAV_ITEMS.DASHBOARD,
-    NAV_ITEMS.PRESCRIPTIONS,
+    NAV_ITEMS.PHARMACY_DISCHARGE,
+    NAV_ITEMS.PATIENT_SEARCH,
+    NAV_ITEMS.HELPDESK,
   ],
 
   // ========== ADD NEW ROLE PERMISSIONS BELOW ==========
   // Example:
   // [ROLES.TEMP]: [NAV_ITEMS.DASHBOARD],
-  // [ROLES.NURSE]: [NAV_ITEMS.DASHBOARD, NAV_ITEMS.PATIENTS, NAV_ITEMS.VITALS],
+  // [ROLES.NURSE]: [NAV_ITEMS.DASHBOARD, NAV_ITEMS.RECENT_PATIENTS],
 };
 
 // ============================================
@@ -197,25 +219,27 @@ export function canManageUsers(role: string | undefined): boolean {
  * Check if user can prescribe medications
  */
 export function canPrescribe(role: string | undefined): boolean {
-  return [
+  const prescriberRoles: UserRole[] = [
     ROLES.SUPER_ADMIN,
     ROLES.CLINICAL_ADMIN,
     ROLES.CONSULTANT,
     ROLES.DOCTOR,
     ROLES.PRESCRIBER,
-  ].includes(role as UserRole);
+  ];
+  return prescriberRoles.includes(role as UserRole);
 }
 
 /**
  * Check if user is pharmacy staff
  */
 export function isPharmacyStaff(role: string | undefined): boolean {
-  return [
+  const pharmacyRoles: UserRole[] = [
     ROLES.HOSPITAL_PHARMACIST,
     ROLES.PHARMACY_TECHNICIAN,
     ROLES.PHARMACY_SUPPORT_WORKER,
     ROLES.PHARMACY_SUPPORT_MANAGER,
-  ].includes(role as UserRole);
+  ];
+  return pharmacyRoles.includes(role as UserRole);
 }
 
 /**
