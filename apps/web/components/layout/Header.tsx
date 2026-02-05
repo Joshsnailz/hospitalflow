@@ -1,6 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Bell,
   LogOut,
@@ -9,9 +11,9 @@ import {
   Menu,
   Search,
   HelpCircle,
-  Moon,
-  Sun,
   ChevronRight,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,8 +29,18 @@ import {
   DropdownMenuTrigger,
   DropdownMenuGroup,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { cn } from '@/lib/utils';
+import { patientsApi } from '@/lib/api/patients';
+
+// CHI Number validation regex
+const CHI_NUMBER_REGEX = /^[1-9]\d{7}[A-NP-TV-Z]\d{2}$/;
 
 interface HeaderProps {
   onMenuToggle?: () => void;
@@ -59,8 +71,14 @@ const notifications = [
 ];
 
 export function Header({ onMenuToggle }: HeaderProps) {
+  const router = useRouter();
   const { user, logout } = useAuth();
   const unreadCount = notifications.filter((n) => n.unread).length;
+
+  // CHI Search state
+  const [chiSearch, setChiSearch] = useState('');
+  const [chiSearching, setChiSearching] = useState(false);
+  const [chiError, setChiError] = useState('');
 
   const getInitials = (firstName?: string, lastName?: string) => {
     return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
@@ -70,6 +88,53 @@ export function Header({ onMenuToggle }: HeaderProps) {
     return role?.split('_').map(word =>
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ') || 'User';
+  };
+
+  const handleChiSearch = async () => {
+    const normalizedChi = chiSearch.trim().toUpperCase();
+
+    if (!normalizedChi) {
+      setChiError('');
+      return;
+    }
+
+    // Validate CHI format
+    if (!CHI_NUMBER_REGEX.test(normalizedChi)) {
+      setChiError('Invalid CHI format');
+      return;
+    }
+
+    setChiError('');
+    setChiSearching(true);
+
+    try {
+      const response = await patientsApi.findByChiNumber(normalizedChi);
+      if (response.success && response.data) {
+        setChiSearch('');
+        router.push(`/patients/${response.data.id}`);
+      } else {
+        setChiError('Patient not found');
+      }
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        setChiError('Patient not found');
+      } else {
+        setChiError('Search failed');
+      }
+    } finally {
+      setChiSearching(false);
+    }
+  };
+
+  const handleChiKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleChiSearch();
+    }
+  };
+
+  const handleChiChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setChiSearch(e.target.value.toUpperCase());
+    setChiError('');
   };
 
   return (
@@ -86,17 +151,45 @@ export function Header({ onMenuToggle }: HeaderProps) {
             <Menu className="h-5 w-5" />
           </Button>
 
-          {/* Search */}
+          {/* CHI Quick Search */}
           <div className="hidden sm:flex relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              type="search"
-              placeholder="Search patients, records..."
-              className="w-64 pl-9 bg-slate-50 border-slate-200 focus:bg-white transition-colors"
+              type="text"
+              placeholder="Enter CHI Number..."
+              value={chiSearch}
+              onChange={handleChiChange}
+              onKeyDown={handleChiKeyPress}
+              className={cn(
+                "w-56 pl-9 pr-10 bg-slate-50 border-slate-200 focus:bg-white transition-colors font-mono uppercase",
+                chiError && "border-destructive focus-visible:ring-destructive"
+              )}
+              disabled={chiSearching}
             />
-            <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-              <span className="text-xs">⌘</span>K
-            </kbd>
+            {chiSearching ? (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+            ) : chiError ? (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{chiError}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                onClick={handleChiSearch}
+                disabled={!chiSearch.trim()}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
 

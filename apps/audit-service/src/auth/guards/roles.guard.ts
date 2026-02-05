@@ -1,7 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
-import { ROLE_HIERARCHY } from '../../config/roles.config';
+import { ROLE_HIERARCHY, UserRole } from '../../config/roles.config';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -23,10 +23,10 @@ export class RolesGuard implements CanActivate {
       return false;
     }
 
-    const userRoleLevel = ROLE_HIERARCHY[user.role] ?? 0;
+    const userRoleLevel = ROLE_HIERARCHY[user.role as UserRole] ?? 0;
 
     return requiredRoles.some((role) => {
-      const requiredLevel = ROLE_HIERARCHY[role] ?? 100;
+      const requiredLevel = ROLE_HIERARCHY[role as UserRole] ?? 100;
       return userRoleLevel >= requiredLevel;
     });
   }

@@ -6,6 +6,7 @@ import { useState } from 'react';
 import {
   LayoutDashboard,
   Users,
+  UserPlus,
   Search,
   Settings,
   Shield,
@@ -93,10 +94,22 @@ const menuConfig: NavSection[] = [
         icon: Users,
         children: [
           {
+            id: 'patients' as NavItemId,
+            name: 'Patient Management',
+            href: '/patients',
+            icon: UserPlus,
+          },
+          {
             id: 'recent-patients' as NavItemId,
             name: 'Recent Patients',
             href: '/patients/recent',
             icon: Users,
+          },
+          {
+            id: 'patient-search' as NavItemId,
+            name: 'Patient Search',
+            href: '/patients/search',
+            icon: Search,
           },
           {
             id: 'clinical-discharge' as NavItemId,
@@ -111,12 +124,6 @@ const menuConfig: NavSection[] = [
             icon: Pill,
           },
         ],
-      },
-      {
-        id: 'patient-search' as NavItemId,
-        name: 'Patient Search',
-        href: '/patients/search',
-        icon: Search,
       },
       {
         id: 'clinical-apps',

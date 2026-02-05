@@ -14,7 +14,7 @@ export interface AuditMessage {
 @Injectable()
 export class AuditConsumerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AuditConsumerService.name);
-  private connection: amqp.Channel | amqp.Connection | null = null;
+  private connection: amqp.ChannelModel | null = null;
   private channel: amqp.Channel | null = null;
 
   constructor(
@@ -78,8 +78,8 @@ export class AuditConsumerService implements OnModuleInit, OnModuleDestroy {
         await this.channel.close();
         this.channel = null;
       }
-      if (this.connection && 'close' in this.connection) {
-        await (this.connection as amqp.Connection).close();
+      if (this.connection) {
+        await this.connection.close();
         this.connection = null;
       }
     } catch (err) {
