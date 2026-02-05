@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ConflictException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -12,8 +13,10 @@ import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { UserEntity } from '../users/entities/user.entity';
 import { RefreshTokenEntity } from './entities/refresh-token.entity';
-import { LoginDto, RegisterDto, RefreshTokenDto } from './dto';
+import { LoginDto, RegisterDto, RefreshTokenDto, CreateUserAdminDto } from './dto';
 import { JwtPayload } from './strategies/jwt.strategy';
+import { EventPublisherService } from '../events/event-publisher.service';
+import * as crypto from 'crypto';
 
 export interface AuthTokens {
   accessToken: string;
@@ -36,6 +39,8 @@ export interface AuthResponse {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     @InjectRepository(UserEntity)
     private userRepository: Repository<UserEntity>,
@@ -43,6 +48,7 @@ export class AuthService {
     private refreshTokenRepository: Repository<RefreshTokenEntity>,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private eventPublisher: EventPublisherService,
   ) {}
 
   async login(loginDto: LoginDto): Promise<AuthResponse> {
@@ -87,6 +93,16 @@ export class AuthService {
     await this.userRepository.save(user);
 
     const tokens = await this.generateTokens(user);
+
+    // Publish audit log for successful login
+    await this.eventPublisher.publishAuditLog({
+      userId: user.id,
+      userEmail: user.email,
+      userRole: user.role,
+      action: 'LOGIN',
+      resource: 'auth',
+      status: 'success',
+    });
 
     return {
       tokens,
@@ -134,6 +150,242 @@ export class AuthService {
     };
   }
 
+  async createUserAdmin(createUserDto: CreateUserAdminDto): Promise<{
+    user: {
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+      role: string;
+      phoneNumber: string | null;
+      isActive: boolean;
+      mustChangePassword: boolean;
+      createdAt: Date;
+    };
+    temporaryPassword: string;
+  }> {
+    const { email, firstName, lastName, role, phoneNumber } = createUserDto;
+
+    // Check if email already exists
+    const existingUser = await this.userRepository.findOne({
+      where: { email },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('Email already registered');
+    }
+
+    // Generate a secure temporary password
+    const temporaryPassword = this.generateTemporaryPassword();
+
+    // Hash password
+    const saltRounds = this.configService.get('BCRYPT_ROUNDS', 12);
+    const passwordHash = await bcrypt.hash(temporaryPassword, saltRounds);
+
+    const user = this.userRepository.create({
+      email,
+      passwordHash,
+      firstName,
+      lastName,
+      role: role as any,
+      phoneNumber: phoneNumber || null,
+      mustChangePassword: true,
+    });
+
+    const savedUser = await this.userRepository.save(user);
+
+    // Publish user.created event for other services to sync
+    await this.eventPublisher.publishUserCreated({
+      userId: savedUser.id,
+      email: savedUser.email,
+      firstName: savedUser.firstName,
+      lastName: savedUser.lastName,
+      role: savedUser.role,
+      phoneNumber: savedUser.phoneNumber || undefined,
+      isActive: savedUser.isActive,
+      mustChangePassword: savedUser.mustChangePassword,
+      createdAt: savedUser.createdAt.toISOString(),
+    });
+
+    // Publish audit log for user creation
+    await this.eventPublisher.publishAuditLog({
+      action: 'CREATE_USER',
+      resource: 'user',
+      resourceId: savedUser.id,
+      status: 'success',
+      newValues: {
+        email: savedUser.email,
+        firstName: savedUser.firstName,
+        lastName: savedUser.lastName,
+        role: savedUser.role,
+      },
+    });
+
+    this.logger.log(`User created: ${savedUser.email} (${savedUser.id})`);
+
+    return {
+      user: {
+        id: savedUser.id,
+        email: savedUser.email,
+        firstName: savedUser.firstName,
+        lastName: savedUser.lastName,
+        role: savedUser.role,
+        phoneNumber: savedUser.phoneNumber,
+        isActive: savedUser.isActive,
+        mustChangePassword: savedUser.mustChangePassword,
+        createdAt: savedUser.createdAt,
+      },
+      temporaryPassword,
+    };
+  }
+
+  private generateTemporaryPassword(): string {
+    // Generate a password like: Abc12345!
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const special = '!@#$%';
+
+    let password = '';
+    password += uppercase[crypto.randomInt(uppercase.length)];
+    password += lowercase[crypto.randomInt(lowercase.length)];
+    password += lowercase[crypto.randomInt(lowercase.length)];
+
+    for (let i = 0; i < 5; i++) {
+      password += numbers[crypto.randomInt(numbers.length)];
+    }
+
+    password += special[crypto.randomInt(special.length)];
+
+    return password;
+  }
+
+  async findAllUsers(filters?: {
+    search?: string;
+    role?: string;
+    isActive?: boolean;
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    data: Array<{
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+      role: string;
+      phoneNumber: string | null;
+      isActive: boolean;
+      mustChangePassword: boolean;
+      createdAt: Date;
+      updatedAt: Date;
+    }>;
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const page = filters?.page ?? 1;
+    const limit = filters?.limit ?? 50;
+
+    const queryBuilder = this.userRepository.createQueryBuilder('user');
+
+    if (filters?.search) {
+      queryBuilder.andWhere(
+        '(user.firstName ILIKE :search OR user.lastName ILIKE :search OR user.email ILIKE :search)',
+        { search: `%${filters.search}%` },
+      );
+    }
+
+    if (filters?.role) {
+      queryBuilder.andWhere('user.role = :role', { role: filters.role });
+    }
+
+    if (filters?.isActive !== undefined) {
+      queryBuilder.andWhere('user.isActive = :isActive', { isActive: filters.isActive });
+    }
+
+    queryBuilder.orderBy('user.createdAt', 'DESC');
+
+    const total = await queryBuilder.getCount();
+
+    queryBuilder.skip((page - 1) * limit).take(limit);
+
+    const users = await queryBuilder.getMany();
+
+    return {
+      data: users.map(user => ({
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        phoneNumber: user.phoneNumber,
+        isActive: user.isActive,
+        mustChangePassword: user.mustChangePassword,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async activateUser(userId: string): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+    user.isActive = true;
+    await this.userRepository.save(user);
+
+    // Publish user.activated event
+    await this.eventPublisher.publishUserActivated({
+      userId: user.id,
+      email: user.email,
+    });
+
+    // Publish audit log
+    await this.eventPublisher.publishAuditLog({
+      action: 'ACTIVATE_USER',
+      resource: 'user',
+      resourceId: user.id,
+      status: 'success',
+      oldValues: { isActive: false },
+      newValues: { isActive: true },
+    });
+
+    this.logger.log(`User activated: ${user.email} (${user.id})`);
+  }
+
+  async deactivateUser(userId: string): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+    user.isActive = false;
+    await this.userRepository.save(user);
+
+    // Publish user.deactivated event
+    await this.eventPublisher.publishUserDeactivated({
+      userId: user.id,
+      email: user.email,
+    });
+
+    // Publish audit log
+    await this.eventPublisher.publishAuditLog({
+      action: 'DEACTIVATE_USER',
+      resource: 'user',
+      resourceId: user.id,
+      status: 'success',
+      oldValues: { isActive: true },
+      newValues: { isActive: false },
+    });
+
+    this.logger.log(`User deactivated: ${user.email} (${user.id})`);
+  }
+
   async refreshToken(refreshTokenDto: RefreshTokenDto): Promise<AuthTokens> {
     const { refreshToken } = refreshTokenDto;
 
@@ -178,6 +430,14 @@ export class AuthService {
       { userId, isRevoked: false },
       { isRevoked: true },
     );
+
+    // Publish audit log for logout
+    await this.eventPublisher.publishAuditLog({
+      userId,
+      action: 'LOGOUT',
+      resource: 'auth',
+      status: 'success',
+    });
   }
 
   async getMe(userId: string): Promise<Omit<UserEntity, 'passwordHash'>> {

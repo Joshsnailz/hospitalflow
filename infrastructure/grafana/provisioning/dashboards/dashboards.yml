@@ -1,0 +1,16 @@
+# Grafana Dashboard Provisioning
+# ===============================
+
+apiVersion: 1
+
+providers:
+  - name: 'Clinical Portal Dashboards'
+    orgId: 1
+    folder: 'Clinical Portal'
+    folderUid: 'clinical-portal'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards

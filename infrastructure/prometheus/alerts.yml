@@ -1,0 +1,91 @@
+# Prometheus Alert Rules for Clinical Portal
+# ===========================================
+
+groups:
+  - name: service_health
+    rules:
+      # Service Down
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "{{ $labels.job }} has been down for more than 1 minute."
+
+      # High Error Rate
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate on {{ $labels.job }}"
+          description: "Error rate is above 5% for {{ $labels.job }}"
+
+      # High Response Time
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time on {{ $labels.job }}"
+          description: "95th percentile response time is above 2 seconds"
+
+  - name: database_health
+    rules:
+      # Database Connection Pool Exhausted
+      - alert: DatabaseConnectionPoolExhausted
+        expr: pg_stat_activity_count >= pg_settings_max_connections * 0.9
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "Connection pool is at 90% capacity"
+
+  - name: rabbitmq_health
+    rules:
+      # RabbitMQ Queue Messages Backing Up
+      - alert: RabbitMQMessagesBackingUp
+        expr: rabbitmq_queue_messages > 1000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "RabbitMQ queue {{ $labels.queue }} has messages backing up"
+          description: "Queue has more than 1000 messages"
+
+      # RabbitMQ Consumer Down
+      - alert: RabbitMQNoConsumers
+        expr: rabbitmq_queue_consumers == 0 and rabbitmq_queue_messages > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "RabbitMQ queue {{ $labels.queue }} has no consumers"
+          description: "Queue has messages but no consumers"
+
+  - name: security_alerts
+    rules:
+      # High Failed Login Attempts
+      - alert: HighFailedLoginAttempts
+        expr: rate(auth_login_failures_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High rate of failed login attempts"
+          description: "More than 10 failed login attempts per minute"
+
+      # Unusual Audit Log Activity
+      - alert: UnusualAuditActivity
+        expr: rate(audit_logs_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Unusual audit log activity detected"
+          description: "Audit log creation rate is unusually high"

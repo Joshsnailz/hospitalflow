@@ -1,0 +1,201 @@
+{
+  "rabbit_version": "3.12.0",
+  "users": [
+    {
+      "name": "clinical_user",
+      "password_hash": "clinical_password",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": "administrator"
+    }
+  ],
+  "vhosts": [
+    {
+      "name": "clinical_portal"
+    }
+  ],
+  "permissions": [
+    {
+      "user": "clinical_user",
+      "vhost": "clinical_portal",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "clinical.events",
+      "vhost": "clinical_portal",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false
+    },
+    {
+      "name": "clinical.audit",
+      "vhost": "clinical_portal",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false
+    },
+    {
+      "name": "clinical.dlx",
+      "vhost": "clinical_portal",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false
+    }
+  ],
+  "queues": [
+    {
+      "name": "user.created",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "clinical.dlx",
+        "x-dead-letter-routing-key": "user.created.dlq"
+      }
+    },
+    {
+      "name": "user.updated",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "clinical.dlx",
+        "x-dead-letter-routing-key": "user.updated.dlq"
+      }
+    },
+    {
+      "name": "user.deactivated",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "rbac.role.assigned",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "rbac.permission.changed",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "audit.logs",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "audit.data-access",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "patient.accessed",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "user.created.dlq",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "user.updated.dlq",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "clinical.events",
+      "vhost": "clinical_portal",
+      "destination": "user.created",
+      "destination_type": "queue",
+      "routing_key": "user.created"
+    },
+    {
+      "source": "clinical.events",
+      "vhost": "clinical_portal",
+      "destination": "user.updated",
+      "destination_type": "queue",
+      "routing_key": "user.updated"
+    },
+    {
+      "source": "clinical.events",
+      "vhost": "clinical_portal",
+      "destination": "user.deactivated",
+      "destination_type": "queue",
+      "routing_key": "user.deactivated"
+    },
+    {
+      "source": "clinical.events",
+      "vhost": "clinical_portal",
+      "destination": "rbac.role.assigned",
+      "destination_type": "queue",
+      "routing_key": "rbac.role.assigned"
+    },
+    {
+      "source": "clinical.events",
+      "vhost": "clinical_portal",
+      "destination": "rbac.permission.changed",
+      "destination_type": "queue",
+      "routing_key": "rbac.permission.changed"
+    },
+    {
+      "source": "clinical.events",
+      "vhost": "clinical_portal",
+      "destination": "patient.accessed",
+      "destination_type": "queue",
+      "routing_key": "patient.accessed"
+    },
+    {
+      "source": "clinical.audit",
+      "vhost": "clinical_portal",
+      "destination": "audit.logs",
+      "destination_type": "queue",
+      "routing_key": "audit.log"
+    },
+    {
+      "source": "clinical.audit",
+      "vhost": "clinical_portal",
+      "destination": "audit.data-access",
+      "destination_type": "queue",
+      "routing_key": "audit.data-access"
+    },
+    {
+      "source": "clinical.dlx",
+      "vhost": "clinical_portal",
+      "destination": "user.created.dlq",
+      "destination_type": "queue",
+      "routing_key": "user.created.dlq"
+    },
+    {
+      "source": "clinical.dlx",
+      "vhost": "clinical_portal",
+      "destination": "user.updated.dlq",
+      "destination_type": "queue",
+      "routing_key": "user.updated.dlq"
+    }
+  ]
+}

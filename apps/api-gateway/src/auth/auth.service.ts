@@ -74,6 +74,60 @@ export class AuthService {
     }
   }
 
+  // Admin user management
+  async createUserAdmin(createUserDto: Record<string, any>, authHeader: string) {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post('/auth/admin/users', createUserDto, {
+          headers: { Authorization: authHeader },
+        }),
+      );
+      return response.data;
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  async findAllUsers(query: Record<string, any>, authHeader: string) {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get('/auth/admin/users', {
+          headers: { Authorization: authHeader },
+          params: query,
+        }),
+      );
+      return response.data;
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  async activateUser(id: string, authHeader: string) {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(`/auth/admin/users/${id}/activate`, {}, {
+          headers: { Authorization: authHeader },
+        }),
+      );
+      return response.data;
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  async deactivateUser(id: string, authHeader: string) {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(`/auth/admin/users/${id}/deactivate`, {}, {
+          headers: { Authorization: authHeader },
+        }),
+      );
+      return response.data;
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
   private handleError(error: unknown): never {
     if (error instanceof AxiosError) {
       const status = error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR;

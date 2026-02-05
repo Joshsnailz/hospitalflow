@@ -38,6 +38,12 @@ export class UserEntity {
   @Column({ name: 'is_email_verified', default: false })
   isEmailVerified: boolean;
 
+  @Column({ name: 'must_change_password', default: false })
+  mustChangePassword: boolean;
+
+  @Column({ name: 'phone_number', type: 'varchar', length: 20, nullable: true })
+  phoneNumber: string | null;
+
   @Column({ name: 'failed_login_attempts', default: 0 })
   failedLoginAttempts: number;
 

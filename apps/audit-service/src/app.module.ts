@@ -5,6 +5,7 @@ import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { HealthModule } from './health/health.module';
 import { RabbitMQModule } from './rabbitmq/rabbitmq.module';
+import { MetricsModule } from './metrics/metrics.module';
 import { AuditLogEntity } from './audit/entities/audit-log.entity';
 import { DataAccessLogEntity } from './audit/entities/data-access-log.entity';
 
@@ -38,6 +39,7 @@ import { DataAccessLogEntity } from './audit/entities/data-access-log.entity';
     AuditModule,
     HealthModule,
     RabbitMQModule,
+    MetricsModule,
   ],
 })
 export class AppModule {}

@@ -1,0 +1,244 @@
+version: "3.8"
+
+services:
+  # ===========================================
+  # DATABASES
+  # ===========================================
+
+  postgres-auth:
+    image: postgres:15-alpine
+    container_name: clinical-portal-auth-db
+    environment:
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: auth_password
+      POSTGRES_DB: auth_db
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+    ports:
+      - "5438:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auth_user -d auth_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - clinical-network
+
+  postgres-user:
+    image: postgres:15-alpine
+    container_name: clinical-portal-user-db
+    environment:
+      POSTGRES_USER: user_user
+      POSTGRES_PASSWORD: user_password
+      POSTGRES_DB: user_db
+    volumes:
+      - user_db_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user_user -d user_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - clinical-network
+
+  postgres-rbac:
+    image: postgres:15-alpine
+    container_name: clinical-portal-rbac-db
+    environment:
+      POSTGRES_USER: rbac_user
+      POSTGRES_PASSWORD: rbac_password
+      POSTGRES_DB: rbac_db
+    volumes:
+      - rbac_db_data:/var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rbac_user -d rbac_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - clinical-network
+
+  postgres-audit:
+    image: postgres:15-alpine
+    container_name: clinical-portal-audit-db
+    environment:
+      POSTGRES_USER: audit_user
+      POSTGRES_PASSWORD: audit_password
+      POSTGRES_DB: audit_db
+    volumes:
+      - audit_db_data:/var/lib/postgresql/data
+    ports:
+      - "5436:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U audit_user -d audit_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - clinical-network
+
+  postgres-patient:
+    image: postgres:15-alpine
+    container_name: clinical-portal-patient-db
+    environment:
+      POSTGRES_USER: patient_user
+      POSTGRES_PASSWORD: patient_password
+      POSTGRES_DB: patient_db
+    volumes:
+      - patient_db_data:/var/lib/postgresql/data
+    ports:
+      - "5437:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U patient_user -d patient_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - clinical-network
+
+  # ===========================================
+  # MESSAGE QUEUE
+  # ===========================================
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: clinical-portal-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: clinical_user
+      RABBITMQ_DEFAULT_PASS: clinical_password
+      RABBITMQ_DEFAULT_VHOST: clinical_portal
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./infrastructure/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - ./infrastructure/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    ports:
+      - "5672:5672" # AMQP
+      - "15672:15672" # Management UI
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - clinical-network
+
+  # ===========================================
+  # CACHE
+  # ===========================================
+
+  redis:
+    image: redis:7-alpine
+    container_name: clinical-portal-redis
+    command: redis-server --appendonly yes --requirepass redis_password
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis_password", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - clinical-network
+
+  # ===========================================
+  # MONITORING
+  # ===========================================
+
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: clinical-portal-prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+      - "--web.enable-admin-api"
+    volumes:
+      - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infrastructure/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - clinical-network
+
+  grafana:
+    image: grafana/grafana:10.1.0
+    container_name: clinical-portal-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: http://localhost:3200
+    volumes:
+      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infrastructure/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3200:3000"
+    depends_on:
+      - prometheus
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q --spider http://localhost:3000/api/health || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - clinical-network
+
+  # ===========================================
+  # MICROSERVICES (Optional - for full stack)
+  # ===========================================
+
+  # api-gateway:
+  #   build:
+  #     context: .
+  #     dockerfile: ./apps/api-gateway/Dockerfile
+  #   container_name: clinical-portal-api-gateway
+  #   environment:
+  #     - NODE_ENV=development
+  #     - PORT=3000
+  #     - AUTH_SERVICE_URL=http://auth-service:3001
+  #     - USER_SERVICE_URL=http://user-service:3002
+  #     - RBAC_SERVICE_URL=http://rbac-service:3003
+  #     - AUDIT_SERVICE_URL=http://audit-service:3004
+  #     - PATIENT_SERVICE_URL=http://patient-service:3005
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - auth-service
+  #     - user-service
+  #     - rbac-service
+  #     - audit-service
+  #     - patient-service
+  #   networks:
+  #     - clinical-network
+
+volumes:
+  auth_db_data:
+  user_db_data:
+  rbac_db_data:
+  audit_db_data:
+  patient_db_data:
+  rabbitmq_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  clinical-network:
+    driver: bridge

@@ -5,6 +5,30 @@ import { AuditService } from '../audit/audit.service';
 import { CreateAuditLogDto } from '../audit/dto/create-audit-log.dto';
 import { CreateDataAccessLogDto } from '../audit/dto/create-data-access-log.dto';
 
+/** Event wrapper format from publishers */
+export interface AuditEventWrapper {
+  eventId: string;
+  eventType: string;
+  timestamp: string;
+  correlationId: string;
+  source: string;
+  version: string;
+  payload: {
+    userId?: string;
+    userEmail?: string;
+    userRole?: string;
+    action: string;
+    resource: string;
+    resourceId?: string;
+    status: 'success' | 'failure' | 'error';
+    ipAddress?: string;
+    userAgent?: string;
+    oldValues?: Record<string, any>;
+    newValues?: Record<string, any>;
+    errorMessage?: string;
+  };
+}
+
 /** Message payload for audit queue - can be audit log or data-access log */
 export interface AuditMessage {
   type?: 'audit' | 'data-access';
@@ -14,8 +38,15 @@ export interface AuditMessage {
 @Injectable()
 export class AuditConsumerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AuditConsumerService.name);
-  private connection: amqp.ChannelModel | null = null;
+  private connection: amqp.Connection | null = null;
   private channel: amqp.Channel | null = null;
+  private isConnected = false;
+  private reconnectAttempts = 0;
+  private readonly maxReconnectAttempts = 10;
+  private readonly reconnectDelay = 5000;
+
+  private readonly AUDIT_EXCHANGE = 'clinical.audit';
+  private readonly DLX_EXCHANGE = 'clinical.dlx';
 
   constructor(
     private readonly configService: ConfigService,
@@ -23,26 +54,47 @@ export class AuditConsumerService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   async onModuleInit() {
-    const url = this.configService.get<string>('RABBITMQ_URL');
-    if (!url) {
-      this.logger.warn('RABBITMQ_URL not set - async audit ingestion disabled');
-      return;
-    }
+    await this.connect();
+  }
+
+  private async connect(): Promise<void> {
+    const url = this.configService.get<string>(
+      'RABBITMQ_URL',
+      'amqp://clinical_user:clinical_password@localhost:5672/clinical_portal',
+    );
 
     try {
-      const conn = await amqp.connect(url);
-      this.connection = conn;
-      this.channel = await conn.createChannel();
+      this.connection = await amqp.connect(url);
+      this.channel = await this.connection.createChannel();
 
-      const auditQueue = this.configService.get<string>('AUDIT_QUEUE', 'audit.logs');
-      const dataAccessQueue = this.configService.get<string>(
-        'AUDIT_DATA_ACCESS_QUEUE',
-        'audit.data-access',
-      );
+      // Ensure exchanges exist
+      await this.channel.assertExchange(this.AUDIT_EXCHANGE, 'direct', { durable: true });
+      await this.channel.assertExchange(this.DLX_EXCHANGE, 'direct', { durable: true });
 
-      await this.channel.assertQueue(auditQueue, { durable: true });
-      await this.channel.assertQueue(dataAccessQueue, { durable: true });
+      const auditQueue = 'audit.logs';
+      const dataAccessQueue = 'audit.data-access';
+      const dlqAudit = 'audit.logs.dlq';
 
+      // Setup queues with DLX
+      const queueOptions = {
+        durable: true,
+        deadLetterExchange: this.DLX_EXCHANGE,
+        deadLetterRoutingKey: 'audit.dead',
+      };
+
+      await this.channel.assertQueue(auditQueue, queueOptions);
+      await this.channel.assertQueue(dataAccessQueue, queueOptions);
+      await this.channel.assertQueue(dlqAudit, { durable: true });
+
+      // Bind queues to exchange
+      await this.channel.bindQueue(auditQueue, this.AUDIT_EXCHANGE, 'audit.log');
+      await this.channel.bindQueue(dataAccessQueue, this.AUDIT_EXCHANGE, 'audit.data-access');
+      await this.channel.bindQueue(dlqAudit, this.DLX_EXCHANGE, 'audit.dead');
+
+      // Set prefetch
+      await this.channel.prefetch(10);
+
+      // Start consuming
       await this.channel.consume(
         auditQueue,
         async (msg) => {
@@ -63,12 +115,38 @@ export class AuditConsumerService implements OnModuleInit, OnModuleDestroy {
         { noAck: false },
       );
 
+      this.isConnected = true;
+      this.reconnectAttempts = 0;
       this.logger.log(
         `RabbitMQ consumer connected - queues: ${auditQueue}, ${dataAccessQueue}`,
       );
+
+      this.connection.on('error', (err) => {
+        this.logger.error('RabbitMQ connection error:', err);
+        this.isConnected = false;
+      });
+
+      this.connection.on('close', () => {
+        this.logger.warn('RabbitMQ connection closed');
+        this.isConnected = false;
+        this.scheduleReconnect();
+      });
     } catch (err) {
-      this.logger.error('Failed to connect to RabbitMQ', err);
-      // Non-fatal: HTTP endpoints and sync logging still work
+      this.logger.warn(`Failed to connect to RabbitMQ: ${err.message}`);
+      this.isConnected = false;
+      this.scheduleReconnect();
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
+      this.logger.log(
+        `Scheduling RabbitMQ reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`,
+      );
+      setTimeout(() => this.connect(), this.reconnectDelay);
+    } else {
+      this.logger.error('Max RabbitMQ reconnect attempts reached');
     }
   }
 
@@ -90,14 +168,39 @@ export class AuditConsumerService implements OnModuleInit, OnModuleDestroy {
   private async handleAuditMessage(msg: amqp.ConsumeMessage) {
     try {
       const raw = msg.content.toString();
-      const parsed = JSON.parse(raw) as AuditMessage | CreateAuditLogDto;
+      const parsed = JSON.parse(raw);
 
-      const dto: CreateAuditLogDto =
-        'payload' in parsed && parsed.type === 'audit'
-          ? (parsed.payload as CreateAuditLogDto)
-          : (parsed as CreateAuditLogDto);
+      let dto: CreateAuditLogDto;
+
+      // Check if this is an event wrapper format (from auth-service, etc.)
+      if ('eventType' in parsed && 'payload' in parsed) {
+        const event = parsed as AuditEventWrapper;
+        dto = {
+          userId: event.payload.userId,
+          userEmail: event.payload.userEmail,
+          userRole: event.payload.userRole,
+          action: event.payload.action.toUpperCase() as any,
+          resource: event.payload.resource,
+          resourceId: event.payload.resourceId,
+          status: event.payload.status === 'success' ? 'SUCCESS' : 'FAILURE',
+          ipAddress: event.payload.ipAddress,
+          userAgent: event.payload.userAgent,
+          oldValues: event.payload.oldValues,
+          newValues: event.payload.newValues,
+          errorMessage: event.payload.errorMessage,
+          serviceName: event.source,
+          requestId: event.correlationId,
+        };
+      } else if ('type' in parsed && parsed.type === 'audit') {
+        // Legacy format with type wrapper
+        dto = parsed.payload as CreateAuditLogDto;
+      } else {
+        // Direct DTO format
+        dto = parsed as CreateAuditLogDto;
+      }
 
       await this.auditService.create(dto);
+      this.logger.debug(`Processed audit log: ${dto.action} on ${dto.resource}`);
       this.channel?.ack(msg);
     } catch (err) {
       this.logger.error('Failed to process audit message', err);
@@ -116,10 +219,15 @@ export class AuditConsumerService implements OnModuleInit, OnModuleDestroy {
           : (parsed as CreateDataAccessLogDto);
 
       await this.auditService.createDataAccessLog(dto);
+      this.logger.debug(`Processed data access log: ${dto.accessType} on ${dto.dataType}`);
       this.channel?.ack(msg);
     } catch (err) {
       this.logger.error('Failed to process data-access message', err);
       this.channel?.nack(msg, false, false);
     }
+  }
+
+  isHealthy(): boolean {
+    return this.isConnected;
   }
 }

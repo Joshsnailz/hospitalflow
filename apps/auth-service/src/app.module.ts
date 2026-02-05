@@ -3,6 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { HealthModule } from './health/health.module';
+import { EventsModule } from './events/events.module';
+import { MetricsModule } from './metrics/metrics.module';
 import { UserEntity } from './users/entities/user.entity';
 import { RefreshTokenEntity } from './auth/entities/refresh-token.entity';
 
@@ -27,8 +29,10 @@ import { RefreshTokenEntity } from './auth/entities/refresh-token.entity';
       }),
       inject: [ConfigService],
     }),
+    EventsModule,
     AuthModule,
     HealthModule,
+    MetricsModule,
   ],
 })
 export class AppModule {}

@@ -3,9 +3,12 @@ import {
   Post,
   Get,
   Body,
+  Param,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -15,7 +18,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { AuthService, AuthResponse, AuthTokens } from './auth.service';
-import { LoginDto, RegisterDto, RefreshTokenDto } from './dto';
+import { LoginDto, RegisterDto, RefreshTokenDto, CreateUserAdminDto } from './dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { Public } from './decorators/public.decorator';
@@ -140,6 +143,88 @@ export class AuthController {
     return {
       success: true,
       data: userInfo,
+    };
+  }
+
+  // Admin User Management Endpoints
+
+  @Post('admin/users')
+  @Roles('super_admin', 'clinical_admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create new user (Admin only) - auto-generates password' })
+  @ApiBody({ type: CreateUserAdminDto })
+  @ApiResponse({ status: 201, description: 'User created successfully with temporary password' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin role required' })
+  @ApiResponse({ status: 409, description: 'Email already registered' })
+  async createUserAdmin(@Body() createUserDto: CreateUserAdminDto) {
+    const result = await this.authService.createUserAdmin(createUserDto);
+    return {
+      success: true,
+      message: 'User created successfully',
+      data: {
+        ...result.user,
+        temporaryPassword: result.temporaryPassword,
+      },
+    };
+  }
+
+  @Get('admin/users')
+  @Roles('super_admin', 'clinical_admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all users (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin role required' })
+  async getUsers(
+    @Query('search') search?: string,
+    @Query('role') role?: string,
+    @Query('isActive') isActive?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.authService.findAllUsers({
+      search,
+      role,
+      isActive: isActive !== undefined ? isActive === 'true' : undefined,
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 50,
+    });
+    return {
+      success: true,
+      ...result,
+    };
+  }
+
+  @Post('admin/users/:id/activate')
+  @Roles('super_admin', 'clinical_admin')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Activate user (Admin only)' })
+  @ApiResponse({ status: 200, description: 'User activated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin role required' })
+  async activateUser(@Param('id', ParseUUIDPipe) id: string) {
+    await this.authService.activateUser(id);
+    return {
+      success: true,
+      message: 'User activated successfully',
+    };
+  }
+
+  @Post('admin/users/:id/deactivate')
+  @Roles('super_admin', 'clinical_admin')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Deactivate user (Admin only)' })
+  @ApiResponse({ status: 200, description: 'User deactivated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin role required' })
+  async deactivateUser(@Param('id', ParseUUIDPipe) id: string) {
+    await this.authService.deactivateUser(id);
+    return {
+      success: true,
+      message: 'User deactivated successfully',
     };
   }
 }

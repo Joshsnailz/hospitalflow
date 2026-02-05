@@ -6,6 +6,8 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
+  Query,
+  Param,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -180,5 +182,58 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getMe(@Headers('authorization') authHeader: string) {
     return this.authService.getMe(authHeader);
+  }
+
+  // Admin User Management
+
+  @Post('admin/users')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Create new user (Admin only) - auto-generates password' })
+  @ApiResponse({ status: 201, description: 'User created successfully with temporary password' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin role required' })
+  @ApiResponse({ status: 409, description: 'Email already registered' })
+  async createUserAdmin(
+    @Body() createUserDto: Record<string, any>,
+    @Headers('authorization') authHeader: string,
+  ) {
+    return this.authService.createUserAdmin(createUserDto, authHeader);
+  }
+
+  @Get('admin/users')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get all users (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin role required' })
+  async getUsers(
+    @Query() query: Record<string, any>,
+    @Headers('authorization') authHeader: string,
+  ) {
+    return this.authService.findAllUsers(query, authHeader);
+  }
+
+  @Post('admin/users/:id/activate')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Activate user (Admin only)' })
+  @ApiResponse({ status: 200, description: 'User activated successfully' })
+  async activateUser(
+    @Param('id') id: string,
+    @Headers('authorization') authHeader: string,
+  ) {
+    return this.authService.activateUser(id, authHeader);
+  }
+
+  @Post('admin/users/:id/deactivate')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Deactivate user (Admin only)' })
+  @ApiResponse({ status: 200, description: 'User deactivated successfully' })
+  async deactivateUser(
+    @Param('id') id: string,
+    @Headers('authorization') authHeader: string,
+  ) {
+    return this.authService.deactivateUser(id, authHeader);
   }
 }

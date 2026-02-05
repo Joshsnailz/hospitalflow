@@ -63,6 +63,7 @@ interface NavDropdown {
   name: string;
   icon: React.ElementType;
   children: NavItem[];
+  requiresPatientContext?: boolean;
 }
 
 interface NavSection {
@@ -74,6 +75,13 @@ interface NavSection {
 // Check if item is a dropdown
 function isDropdown(item: NavItem | NavDropdown): item is NavDropdown {
   return 'children' in item;
+}
+
+// Check if we're in a patient context (viewing a specific patient)
+function isPatientContext(pathname: string): boolean {
+  // Match /patients/[id] where id is a UUID or numeric ID
+  const patientContextRegex = /^\/patients\/[a-f0-9-]+/i;
+  return patientContextRegex.test(pathname);
 }
 
 // Menu Configuration
@@ -111,6 +119,14 @@ const menuConfig: NavSection[] = [
             href: '/patients/search',
             icon: Search,
           },
+        ],
+      },
+      {
+        id: 'clinical-apps',
+        name: 'Clinical Apps',
+        icon: Stethoscope,
+        requiresPatientContext: true,
+        children: [
           {
             id: 'clinical-discharge' as NavItemId,
             name: 'Clinical Discharge List',
@@ -123,13 +139,6 @@ const menuConfig: NavSection[] = [
             href: '/discharge/pharmacy',
             icon: Pill,
           },
-        ],
-      },
-      {
-        id: 'clinical-apps',
-        name: 'Clinical Apps',
-        icon: Stethoscope,
-        children: [
           {
             id: 'clinical-imaging' as NavItemId,
             name: 'Clinical Imaging',
@@ -376,9 +385,15 @@ function NavSectionComponent({
   openDropdowns,
   toggleDropdown,
 }: NavSectionComponentProps) {
-  // Check if any items in this section are permitted
+  const inPatientContext = isPatientContext(pathname);
+
+  // Check if any items in this section are permitted and visible
   const hasPermittedItems = section.items.some((item) => {
     if (isDropdown(item)) {
+      // Skip dropdowns that require patient context when not in one
+      if (item.requiresPatientContext && !inPatientContext) {
+        return false;
+      }
       return item.children.some((child) => hasPermission(userRole, child.id));
     }
     return hasPermission(userRole, item.id);
@@ -398,6 +413,11 @@ function NavSectionComponent({
       <nav className="space-y-1">
         {section.items.map((item) => {
           if (isDropdown(item)) {
+            // Skip dropdowns that require patient context when not in one
+            if (item.requiresPatientContext && !inPatientContext) {
+              return null;
+            }
+
             return (
               <NavDropdownComponent
                 key={item.id}
@@ -451,10 +471,16 @@ export function Sidebar({
     );
   };
 
+  const inPatientContext = isPatientContext(pathname);
+
   // Check which sections have permitted items
   const sectionsWithItems = menuConfig.filter((section) =>
     section.items.some((item) => {
       if (isDropdown(item)) {
+        // Skip dropdowns that require patient context when not in one
+        if (item.requiresPatientContext && !inPatientContext) {
+          return false;
+        }
         return item.children.some((child) => hasPermission(userRole, child.id));
       }
       return hasPermission(userRole, item.id);
