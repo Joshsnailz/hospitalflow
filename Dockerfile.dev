@@ -1,0 +1,14 @@
+FROM node:20-alpine
+
+WORKDIR /repo
+
+# Native deps for bcrypt and other Node addons
+RUN apk add --no-cache libc6-compat python3 make g++
+
+COPY package.json package-lock.json turbo.json tsconfig.json ./
+COPY apps ./apps
+COPY packages ./packages
+COPY libs ./libs
+COPY scripts ./scripts
+
+RUN npm install

@@ -1,4 +1,10 @@
-version: "3.8"
+version: '3.8'
+
+x-app-base: &app_base
+  build:
+    context: .
+    dockerfile: Dockerfile.dev
+  image: clinical-portal-dev
 
 services:
   # ===========================================
@@ -9,15 +15,15 @@ services:
     image: postgres:15-alpine
     container_name: clinical-portal-auth-db
     environment:
-      POSTGRES_USER: auth_user
-      POSTGRES_PASSWORD: auth_password
+      POSTGRES_USER: ${DB_USER:-clinical_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-clinical_password}
       POSTGRES_DB: auth_db
     volumes:
       - auth_db_data:/var/lib/postgresql/data
     ports:
-      - "5438:5432"
+      - '127.0.0.1:5438:5432'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U auth_user -d auth_db"]
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-clinical_user} -d auth_db']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,15 +34,15 @@ services:
     image: postgres:15-alpine
     container_name: clinical-portal-user-db
     environment:
-      POSTGRES_USER: user_user
-      POSTGRES_PASSWORD: user_password
+      POSTGRES_USER: ${DB_USER:-clinical_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-clinical_password}
       POSTGRES_DB: user_db
     volumes:
       - user_db_data:/var/lib/postgresql/data
     ports:
-      - "5434:5432"
+      - '127.0.0.1:5434:5432'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user_user -d user_db"]
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-clinical_user} -d user_db']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -47,15 +53,15 @@ services:
     image: postgres:15-alpine
     container_name: clinical-portal-rbac-db
     environment:
-      POSTGRES_USER: rbac_user
-      POSTGRES_PASSWORD: rbac_password
+      POSTGRES_USER: ${DB_USER:-clinical_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-clinical_password}
       POSTGRES_DB: rbac_db
     volumes:
       - rbac_db_data:/var/lib/postgresql/data
     ports:
-      - "5435:5432"
+      - '127.0.0.1:5435:5432'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rbac_user -d rbac_db"]
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-clinical_user} -d rbac_db']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -66,15 +72,15 @@ services:
     image: postgres:15-alpine
     container_name: clinical-portal-audit-db
     environment:
-      POSTGRES_USER: audit_user
-      POSTGRES_PASSWORD: audit_password
+      POSTGRES_USER: ${DB_USER:-clinical_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-clinical_password}
       POSTGRES_DB: audit_db
     volumes:
       - audit_db_data:/var/lib/postgresql/data
     ports:
-      - "5436:5432"
+      - '127.0.0.1:5436:5432'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U audit_user -d audit_db"]
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-clinical_user} -d audit_db']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -85,15 +91,15 @@ services:
     image: postgres:15-alpine
     container_name: clinical-portal-patient-db
     environment:
-      POSTGRES_USER: patient_user
-      POSTGRES_PASSWORD: patient_password
+      POSTGRES_USER: ${DB_USER:-clinical_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-clinical_password}
       POSTGRES_DB: patient_db
     volumes:
       - patient_db_data:/var/lib/postgresql/data
     ports:
-      - "5437:5432"
+      - '127.0.0.1:5437:5432'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U patient_user -d patient_db"]
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-clinical_user} -d patient_db']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -108,18 +114,18 @@ services:
     image: rabbitmq:3.12-management-alpine
     container_name: clinical-portal-rabbitmq
     environment:
-      RABBITMQ_DEFAULT_USER: clinical_user
-      RABBITMQ_DEFAULT_PASS: clinical_password
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-clinical_user}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-rabbitmq_password}
       RABBITMQ_DEFAULT_VHOST: clinical_portal
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
       - ./infrastructure/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
       - ./infrastructure/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     ports:
-      - "5672:5672" # AMQP
-      - "15672:15672" # Management UI
+      - '5672:5672' # AMQP
+      - '15672:15672' # Management UI
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
       interval: 30s
       timeout: 10s
       retries: 5
@@ -133,13 +139,13 @@ services:
   redis:
     image: redis:7-alpine
     container_name: clinical-portal-redis
-    command: redis-server --appendonly yes --requirepass redis_password
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password}
     volumes:
       - redis_data:/data
     ports:
-      - "6379:6379"
+      - '6379:6379'
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "redis_password", "ping"]
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD:-redis_password}', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -154,18 +160,18 @@ services:
     image: prom/prometheus:v2.47.0
     container_name: clinical-portal-prometheus
     command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--web.enable-lifecycle"
-      - "--web.enable-admin-api"
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
     volumes:
       - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./infrastructure/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
     ports:
-      - "9090:9090"
+      - '9090:9090'
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:9090/-/healthy']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -177,23 +183,19 @@ services:
     container_name: clinical-portal-grafana
     environment:
       GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin123
-      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin123}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
       GF_SERVER_ROOT_URL: http://localhost:3200
     volumes:
       - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./infrastructure/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     ports:
-      - "3200:3000"
+      - '3200:3000'
     depends_on:
       - prometheus
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "wget -q --spider http://localhost:3000/api/health || exit 1",
-        ]
+      test: ['CMD-SHELL', 'wget -q --spider http://localhost:3000/api/health || exit 1']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -201,32 +203,197 @@ services:
       - clinical-network
 
   # ===========================================
-  # MICROSERVICES (Optional - for full stack)
+  # APPLICATION (Full stack)
   # ===========================================
 
-  # api-gateway:
-  #   build:
-  #     context: .
-  #     dockerfile: ./apps/api-gateway/Dockerfile
-  #   container_name: clinical-portal-api-gateway
-  #   environment:
-  #     - NODE_ENV=development
-  #     - PORT=3000
-  #     - AUTH_SERVICE_URL=http://auth-service:3001
-  #     - USER_SERVICE_URL=http://user-service:3002
-  #     - RBAC_SERVICE_URL=http://rbac-service:3003
-  #     - AUDIT_SERVICE_URL=http://audit-service:3004
-  #     - PATIENT_SERVICE_URL=http://patient-service:3005
-  #   ports:
-  #     - "3000:3000"
-  #   depends_on:
-  #     - auth-service
-  #     - user-service
-  #     - rbac-service
-  #     - audit-service
-  #     - patient-service
-  #   networks:
-  #     - clinical-network
+  auth-service:
+    <<: *app_base
+    container_name: clinical-portal-auth-service
+    command: npm run start:dev --prefix apps/auth-service
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      AUTH_DB_HOST: postgres-auth
+      AUTH_DB_PORT: 5432
+      AUTH_DB_USER: ${DB_USER:-clinical_user}
+      AUTH_DB_PASSWORD: ${DB_PASSWORD:-clinical_password}
+      AUTH_DB_NAME: auth_db
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production-min-32-chars}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-your-super-secret-refresh-key-change-this-in-production-min-32-chars}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
+      CORS_ORIGIN: http://localhost:3100
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-clinical_user}:${RABBITMQ_PASSWORD:-rabbitmq_password}@rabbitmq:5672/clinical_portal
+      CHOKIDAR_USEPOLLING: 'true'
+    ports:
+      - '3001:3001'
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - clinical-network
+
+  user-service:
+    <<: *app_base
+    container_name: clinical-portal-user-service
+    command: npm run start:dev --prefix apps/user-service
+    environment:
+      NODE_ENV: development
+      PORT: 3002
+      USER_DB_HOST: postgres-user
+      USER_DB_PORT: 5432
+      USER_DB_USER: ${DB_USER:-clinical_user}
+      USER_DB_PASSWORD: ${DB_PASSWORD:-clinical_password}
+      USER_DB_NAME: user_db
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production-min-32-chars}
+      AUTH_SERVICE_URL: http://auth-service:3001
+      AUTH_SERVICE_INTERNAL_KEY: internal-service-communication-key
+      CORS_ORIGIN: http://localhost:3100
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-clinical_user}:${RABBITMQ_PASSWORD:-rabbitmq_password}@rabbitmq:5672/clinical_portal
+      CHOKIDAR_USEPOLLING: 'true'
+    ports:
+      - '3002:3002'
+    depends_on:
+      postgres-user:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - clinical-network
+
+  rbac-service:
+    <<: *app_base
+    container_name: clinical-portal-rbac-service
+    command: npm run start:dev --prefix apps/rbac-service
+    environment:
+      NODE_ENV: development
+      PORT: 3003
+      RBAC_DB_HOST: postgres-rbac
+      RBAC_DB_PORT: 5432
+      RBAC_DB_USER: ${DB_USER:-clinical_user}
+      RBAC_DB_PASSWORD: ${DB_PASSWORD:-clinical_password}
+      RBAC_DB_NAME: rbac_db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_password}
+      REDIS_CACHE_TTL: 3600
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production-min-32-chars}
+      CORS_ORIGIN: http://localhost:3100
+      CHOKIDAR_USEPOLLING: 'true'
+    ports:
+      - '3003:3003'
+    depends_on:
+      postgres-rbac:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - clinical-network
+
+  audit-service:
+    <<: *app_base
+    container_name: clinical-portal-audit-service
+    command: npm run start:dev --prefix apps/audit-service
+    environment:
+      NODE_ENV: development
+      PORT: 3004
+      AUDIT_DB_HOST: postgres-audit
+      AUDIT_DB_PORT: 5432
+      AUDIT_DB_USER: ${DB_USER:-clinical_user}
+      AUDIT_DB_PASSWORD: ${DB_PASSWORD:-clinical_password}
+      AUDIT_DB_NAME: audit_db
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production-min-32-chars}
+      CORS_ORIGIN: http://localhost:3100
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-clinical_user}:${RABBITMQ_PASSWORD:-rabbitmq_password}@rabbitmq:5672/clinical_portal
+      AUDIT_QUEUE: audit.logs
+      AUDIT_DATA_ACCESS_QUEUE: audit.data-access
+      AUDIT_RETENTION_DAYS: 2555
+      CHOKIDAR_USEPOLLING: 'true'
+    ports:
+      - '3004:3004'
+    depends_on:
+      postgres-audit:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - clinical-network
+
+  patient-service:
+    <<: *app_base
+    container_name: clinical-portal-patient-service
+    command: npm run start:dev --prefix apps/patient-service
+    environment:
+      NODE_ENV: development
+      PORT: 3005
+      PATIENT_DB_HOST: postgres-patient
+      PATIENT_DB_PORT: 5432
+      PATIENT_DB_USER: ${DB_USER:-clinical_user}
+      PATIENT_DB_PASSWORD: ${DB_PASSWORD:-clinical_password}
+      PATIENT_DB_NAME: patient_db
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production-min-32-chars}
+      CORS_ORIGIN: http://localhost:3100
+      CHOKIDAR_USEPOLLING: 'true'
+    ports:
+      - '3005:3005'
+    depends_on:
+      postgres-patient:
+        condition: service_healthy
+    networks:
+      - clinical-network
+
+  api-gateway:
+    <<: *app_base
+    container_name: clinical-portal-api-gateway
+    command: npm run start:dev --prefix apps/api-gateway
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      AUTH_SERVICE_URL: http://auth-service:3001
+      USER_SERVICE_URL: http://user-service:3002
+      RBAC_SERVICE_URL: http://rbac-service:3003
+      AUDIT_SERVICE_URL: http://audit-service:3004
+      PATIENT_SERVICE_URL: http://patient-service:3005
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production-min-32-chars}
+      CORS_ORIGIN: http://localhost:3100
+      CHOKIDAR_USEPOLLING: 'true'
+    ports:
+      - '3000:3000'
+    depends_on:
+      auth-service:
+        condition: service_started
+      user-service:
+        condition: service_started
+      rbac-service:
+        condition: service_started
+      audit-service:
+        condition: service_started
+      patient-service:
+        condition: service_started
+    networks:
+      - clinical-network
+
+  web:
+    <<: *app_base
+    container_name: clinical-portal-web
+    command: npm run dev --prefix apps/web -- -H 0.0.0.0
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+      WATCHPACK_POLLING: 'true'
+      CHOKIDAR_USEPOLLING: 'true'
+    ports:
+      - '3100:3100'
+    depends_on:
+      api-gateway:
+        condition: service_started
+    networks:
+      - clinical-network
 
 volumes:
   auth_db_data:

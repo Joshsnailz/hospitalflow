@@ -1,27 +1,12 @@
 {
   "rabbit_version": "3.12.0",
-  "users": [
-    {
-      "name": "clinical_user",
-      "password_hash": "clinical_password",
-      "hashing_algorithm": "rabbit_password_hashing_sha256",
-      "tags": "administrator"
-    }
-  ],
+  "users": [],
   "vhosts": [
     {
       "name": "clinical_portal"
     }
   ],
-  "permissions": [
-    {
-      "user": "clinical_user",
-      "vhost": "clinical_portal",
-      "configure": ".*",
-      "write": ".*",
-      "read": ".*"
-    }
-  ],
+  "permissions": [],
   "exchanges": [
     {
       "name": "clinical.events",
