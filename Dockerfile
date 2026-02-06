@@ -34,6 +34,10 @@ RUN npx turbo run build --filter='./apps/*-service' --filter='./apps/api-gateway
 # Build Next.js web app
 RUN npm run build --prefix apps/web
 
+# Copy static assets into standalone output (required for standalone mode)
+RUN cp -r apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static
+RUN if [ -d apps/web/public ]; then cp -r apps/web/public apps/web/.next/standalone/apps/web/public; fi
+
 # ============================================================
 # Stage 2: runner — lightweight production image
 # ============================================================
