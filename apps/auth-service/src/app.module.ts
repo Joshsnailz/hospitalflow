@@ -24,7 +24,7 @@ import { RefreshTokenEntity } from './auth/entities/refresh-token.entity';
         password: configService.get('AUTH_DB_PASSWORD', 'clinical_password'),
         database: configService.get('AUTH_DB_NAME', 'auth_db'),
         entities: [UserEntity, RefreshTokenEntity],
-        synchronize: configService.get('NODE_ENV') !== 'production',
+        synchronize: true,
         logging: configService.get('NODE_ENV') === 'development',
       }),
       inject: [ConfigService],

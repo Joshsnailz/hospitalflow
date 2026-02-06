@@ -38,7 +38,7 @@ export interface AuditMessage {
 @Injectable()
 export class AuditConsumerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AuditConsumerService.name);
-  private connection: amqp.Connection | null = null;
+  private connection: any = null;
   private channel: amqp.Channel | null = null;
   private isConnected = false;
   private reconnectAttempts = 0;
@@ -64,12 +64,14 @@ export class AuditConsumerService implements OnModuleInit, OnModuleDestroy {
     );
 
     try {
-      this.connection = await amqp.connect(url);
-      this.channel = await this.connection.createChannel();
+      const conn = await amqp.connect(url);
+      this.connection = conn;
+      const ch = await conn.createChannel();
+      this.channel = ch;
 
       // Ensure exchanges exist
-      await this.channel.assertExchange(this.AUDIT_EXCHANGE, 'direct', { durable: true });
-      await this.channel.assertExchange(this.DLX_EXCHANGE, 'direct', { durable: true });
+      await ch.assertExchange(this.AUDIT_EXCHANGE, 'direct', { durable: true });
+      await ch.assertExchange(this.DLX_EXCHANGE, 'direct', { durable: true });
 
       const auditQueue = 'audit.logs';
       const dataAccessQueue = 'audit.data-access';
@@ -82,20 +84,20 @@ export class AuditConsumerService implements OnModuleInit, OnModuleDestroy {
         deadLetterRoutingKey: 'audit.dead',
       };
 
-      await this.channel.assertQueue(auditQueue, queueOptions);
-      await this.channel.assertQueue(dataAccessQueue, queueOptions);
-      await this.channel.assertQueue(dlqAudit, { durable: true });
+      await ch.assertQueue(auditQueue, queueOptions);
+      await ch.assertQueue(dataAccessQueue, queueOptions);
+      await ch.assertQueue(dlqAudit, { durable: true });
 
       // Bind queues to exchange
-      await this.channel.bindQueue(auditQueue, this.AUDIT_EXCHANGE, 'audit.log');
-      await this.channel.bindQueue(dataAccessQueue, this.AUDIT_EXCHANGE, 'audit.data-access');
-      await this.channel.bindQueue(dlqAudit, this.DLX_EXCHANGE, 'audit.dead');
+      await ch.bindQueue(auditQueue, this.AUDIT_EXCHANGE, 'audit.log');
+      await ch.bindQueue(dataAccessQueue, this.AUDIT_EXCHANGE, 'audit.data-access');
+      await ch.bindQueue(dlqAudit, this.DLX_EXCHANGE, 'audit.dead');
 
       // Set prefetch
-      await this.channel.prefetch(10);
+      await ch.prefetch(10);
 
       // Start consuming
-      await this.channel.consume(
+      await ch.consume(
         auditQueue,
         async (msg) => {
           if (msg) {
@@ -105,7 +107,7 @@ export class AuditConsumerService implements OnModuleInit, OnModuleDestroy {
         { noAck: false },
       );
 
-      await this.channel.consume(
+      await ch.consume(
         dataAccessQueue,
         async (msg) => {
           if (msg) {
@@ -121,18 +123,18 @@ export class AuditConsumerService implements OnModuleInit, OnModuleDestroy {
         `RabbitMQ consumer connected - queues: ${auditQueue}, ${dataAccessQueue}`,
       );
 
-      this.connection.on('error', (err) => {
+      conn.on('error', (err: Error) => {
         this.logger.error('RabbitMQ connection error:', err);
         this.isConnected = false;
       });
 
-      this.connection.on('close', () => {
+      conn.on('close', () => {
         this.logger.warn('RabbitMQ connection closed');
         this.isConnected = false;
         this.scheduleReconnect();
       });
     } catch (err) {
-      this.logger.warn(`Failed to connect to RabbitMQ: ${err.message}`);
+      this.logger.warn(`Failed to connect to RabbitMQ: ${(err as Error).message}`);
       this.isConnected = false;
       this.scheduleReconnect();
     }

@@ -28,13 +28,8 @@ export const ROLES = {
   PHARMACY_SUPPORT_WORKER: 'pharmacy_support_worker',
   PHARMACY_SUPPORT_MANAGER: 'pharmacy_support_manager',
 
-  // ============================================
-  // ADD NEW ROLES BELOW THIS LINE
-  // ============================================
-  // TEMP: 'temp',
-  // NURSE: 'nurse',
-  // RECEPTIONIST: 'receptionist',
-  // LAB_TECHNICIAN: 'lab_technician',
+  // Clinical support roles
+  NURSE: 'nurse',
 } as const;
 
 // Generate the UserRole type from ROLES object

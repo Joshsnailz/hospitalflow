@@ -32,13 +32,8 @@ export const ROLES = {
   PHARMACY_SUPPORT_WORKER: 'pharmacy_support_worker',
   PHARMACY_SUPPORT_MANAGER: 'pharmacy_support_manager',
 
-  // ============================================
-  // ADD NEW ROLES BELOW THIS LINE
-  // ============================================
-  // TEMP: 'temp',
-  // NURSE: 'nurse',
-  // RECEPTIONIST: 'receptionist',
-  // LAB_TECHNICIAN: 'lab_technician',
+  // Clinical support roles
+  NURSE: 'nurse',
 } as const;
 
 // Generate the UserRole type from ROLES object
@@ -79,6 +74,18 @@ export const NAV_ITEMS = {
 
   // Patient Management
   PATIENTS: 'patients',
+
+  // Appointments
+  APPOINTMENTS: 'appointments',
+
+  // Ward View
+  WARD_VIEW: 'ward-view',
+
+  // Walk-in Registration
+  WALK_IN: 'walk-in',
+
+  // Hospital Management (admin)
+  HOSPITALS: 'hospitals',
 } as const;
 
 export type NavItemId = (typeof NAV_ITEMS)[keyof typeof NAV_ITEMS];
@@ -98,7 +105,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, NavItemId[]> = {
   [ROLES.CLINICAL_ADMIN]: [...ALL_NAV_ITEMS],
 
   // ========== CLINICAL ROLES ==========
-  // Full clinical access, no admin
   [ROLES.CONSULTANT]: [
     NAV_ITEMS.DASHBOARD,
     NAV_ITEMS.PATIENTS,
@@ -109,6 +115,9 @@ export const ROLE_PERMISSIONS: Record<UserRole, NavItemId[]> = {
     NAV_ITEMS.CONTROLLED_DRUGS,
     NAV_ITEMS.EMERGENCY_CARE,
     NAV_ITEMS.CONTINUED_CARE,
+    NAV_ITEMS.APPOINTMENTS,
+    NAV_ITEMS.WARD_VIEW,
+    NAV_ITEMS.WALK_IN,
     NAV_ITEMS.HELPDESK,
   ],
   [ROLES.DOCTOR]: [
@@ -121,6 +130,23 @@ export const ROLE_PERMISSIONS: Record<UserRole, NavItemId[]> = {
     NAV_ITEMS.CONTROLLED_DRUGS,
     NAV_ITEMS.EMERGENCY_CARE,
     NAV_ITEMS.CONTINUED_CARE,
+    NAV_ITEMS.APPOINTMENTS,
+    NAV_ITEMS.WARD_VIEW,
+    NAV_ITEMS.WALK_IN,
+    NAV_ITEMS.HELPDESK,
+  ],
+  [ROLES.NURSE]: [
+    NAV_ITEMS.DASHBOARD,
+    NAV_ITEMS.PATIENTS,
+    NAV_ITEMS.RECENT_PATIENTS,
+    NAV_ITEMS.CLINICAL_DISCHARGE,
+    NAV_ITEMS.PATIENT_SEARCH,
+    NAV_ITEMS.CLINICAL_IMAGING,
+    NAV_ITEMS.EMERGENCY_CARE,
+    NAV_ITEMS.CONTINUED_CARE,
+    NAV_ITEMS.APPOINTMENTS,
+    NAV_ITEMS.WARD_VIEW,
+    NAV_ITEMS.WALK_IN,
     NAV_ITEMS.HELPDESK,
   ],
   [ROLES.PRESCRIBER]: [
@@ -130,11 +156,11 @@ export const ROLE_PERMISSIONS: Record<UserRole, NavItemId[]> = {
     NAV_ITEMS.CLINICAL_DISCHARGE,
     NAV_ITEMS.PATIENT_SEARCH,
     NAV_ITEMS.CONTROLLED_DRUGS,
+    NAV_ITEMS.APPOINTMENTS,
     NAV_ITEMS.HELPDESK,
   ],
 
   // ========== PHARMACY ROLES ==========
-  // Pharmacy-focused access
   [ROLES.HOSPITAL_PHARMACIST]: [
     NAV_ITEMS.DASHBOARD,
     NAV_ITEMS.PATIENTS,
@@ -142,6 +168,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, NavItemId[]> = {
     NAV_ITEMS.PHARMACY_DISCHARGE,
     NAV_ITEMS.PATIENT_SEARCH,
     NAV_ITEMS.CONTROLLED_DRUGS,
+    NAV_ITEMS.APPOINTMENTS,
     NAV_ITEMS.HELPDESK,
   ],
   [ROLES.PHARMACY_SUPPORT_MANAGER]: [
@@ -150,6 +177,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, NavItemId[]> = {
     NAV_ITEMS.RECENT_PATIENTS,
     NAV_ITEMS.PHARMACY_DISCHARGE,
     NAV_ITEMS.PATIENT_SEARCH,
+    NAV_ITEMS.APPOINTMENTS,
     NAV_ITEMS.HELPDESK,
   ],
   [ROLES.PHARMACY_TECHNICIAN]: [
@@ -166,11 +194,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, NavItemId[]> = {
     NAV_ITEMS.PATIENT_SEARCH,
     NAV_ITEMS.HELPDESK,
   ],
-
-  // ========== ADD NEW ROLE PERMISSIONS BELOW ==========
-  // Example:
-  // [ROLES.TEMP]: [NAV_ITEMS.DASHBOARD],
-  // [ROLES.NURSE]: [NAV_ITEMS.DASHBOARD, NAV_ITEMS.RECENT_PATIENTS],
 };
 
 // ============================================

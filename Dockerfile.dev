@@ -12,3 +12,13 @@ COPY libs ./libs
 COPY scripts ./scripts
 
 RUN npm install
+
+# Build all NestJS services
+RUN npm run build --prefix apps/auth-service || true
+RUN npm run build --prefix apps/user-service || true
+RUN npm run build --prefix apps/rbac-service || true
+RUN npm run build --prefix apps/audit-service || true
+RUN npm run build --prefix apps/patient-service || true
+RUN npm run build --prefix apps/clinical-service || true
+RUN npm run build --prefix apps/hospital-service || true
+RUN npm run build --prefix apps/api-gateway || true

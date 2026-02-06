@@ -36,6 +36,9 @@ Clinical Portal 2.0 is an enterprise-grade healthcare management system designed
 3. **User Service** (Port 3002) - User CRUD operations, profile management
 4. **RBAC Service** (Port 3003) - Roles, permissions, authorization
 5. **Audit Service** (Port 3004) - HIPAA-compliant logging
+6. **Patient Service** (Port 3005) - Patient registration and records
+7. **Clinical Service** (Port 3006) - Encounters, appointments, care plans, discharge
+8. **Hospital Service** (Port 3007) - Hospital, department, ward, and bed management
 
 ## 🚀 Getting Started
 
@@ -46,59 +49,76 @@ Clinical Portal 2.0 is an enterprise-grade healthcare management system designed
 - Docker and Docker Compose
 - Git
 
-### Quick Start
+### Quick Start (Docker — recommended)
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd Clinical_Portal_2.0
-   ```
+A single command builds all services, creates databases, seeds data, and starts everything:
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+```bash
+# 1. Clone and enter the repo
+git clone <repository-url>
+cd Clinical_Portal_2.0
 
-3. **Start the PostgreSQL database**
-   ```bash
-   docker-compose up -d postgres-auth
-   ```
+# 2. Copy environment file
+cp .env.example .env
 
-4. **Start the Auth Service** (Terminal 1)
-   ```bash
-   cd apps/auth-service
-   npm install
-   npm run start:dev
-   ```
+# 3. Build and start the entire stack
+docker compose up --build -d
+```
 
-5. **Seed the database with demo users** (new terminal)
-   ```bash
-   cd apps/auth-service
-   npm run seed
-   ```
-   This creates:
-   - Admin: `admin@clinical-portal.com` / `Admin123!`
-   - Doctor: `doctor@clinical-portal.com` / `Doctor123!`
+This will:
+- Install all dependencies and build every service (NestJS + Next.js) inside Docker
+- Start 7 PostgreSQL databases, RabbitMQ, and Redis
+- Create all database tables via TypeORM synchronize
+- Seed demo users (auth-service), RBAC roles/permissions (rbac-service), and hospital data (hospital-service)
+- Start all 8 backend services, the API gateway, the web frontend, Prometheus, and Grafana
+- Health-check every service before starting dependents (API gateway waits for all backends; web waits for gateway; monitoring waits for gateway)
 
-6. **Start the API Gateway** (Terminal 2)
-   ```bash
-   cd apps/api-gateway
-   npm install
-   npm run start:dev
-   ```
+Wait ~2-3 minutes for the initial build, then verify:
 
-7. **Start the Frontend** (Terminal 3)
-   ```bash
-   cd apps/web
-   npm run dev
-   ```
+```bash
+# All containers should show "healthy" or "Up"
+docker compose ps
+
+# Test key endpoints
+curl http://localhost:3000/healthcheck   # API Gateway
+curl http://localhost:3001/healthcheck   # Auth Service
+curl http://localhost:3100               # Web Frontend
+curl http://localhost:9090/-/healthy     # Prometheus
+curl http://localhost:3200/api/health    # Grafana
+
+# Test login
+curl -X POST http://localhost:3000/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"admin@clinical-portal.com","password":"Admin123!"}'
+```
+
+To tear down and reset all data:
+
+```bash
+docker compose down -v
+```
+
+### Local Development (without Docker)
+
+```bash
+npm install
+npm run dev    # Starts all services via Turborepo in dev/watch mode
+```
+
+You will need local PostgreSQL, Redis, and RabbitMQ instances (or start just infrastructure via `docker compose up -d postgres-auth postgres-user postgres-rbac postgres-audit postgres-patient postgres-clinical postgres-hospital rabbitmq redis`).
 
 ### Demo Credentials
+
+Seeded automatically on first Docker startup:
 
 | Role | Email | Password |
 |------|-------|----------|
 | Super Admin | `admin@clinical-portal.com` | `Admin123!` |
 | Doctor | `doctor@clinical-portal.com` | `Doctor123!` |
+| Clinical Admin | `clinicaladmin@clinical-portal.com` | `ClinAdmin123!` |
+| Nurse | `nurse@clinical-portal.com` | `Nurse123!` |
+| Pharmacist | `pharmacist@clinical-portal.com` | `Pharma123!` |
+| Consultant | `consultant@clinical-portal.com` | `Consult123!` |
 
 ### Access the Application
 
@@ -108,32 +128,34 @@ Clinical Portal 2.0 is an enterprise-grade healthcare management system designed
 | **API Gateway** | http://localhost:3000 | Main API entry point |
 | **API Gateway Swagger** | http://localhost:3000/api/docs | Interactive API documentation |
 | **Auth Service Swagger** | http://localhost:3001/api/docs | Auth service API documentation |
-| **Grafana** | http://localhost:3200 | Monitoring dashboards (admin/admin) |
+| **Grafana** | http://localhost:3200 | Monitoring dashboards (admin/admin123) |
 | **Prometheus** | http://localhost:9090 | Metrics collection |
 | **RabbitMQ Management** | http://localhost:15672 | Message queue UI |
 
 ### Health Check Endpoints
 
-Verify services are running:
-```bash
-# API Gateway
-curl http://localhost:3000/healthcheck
-
-# Auth Service
-curl http://localhost:3001/healthcheck
-```
-
-### Full Infrastructure (All Services)
-
-To start the complete stack including all databases, Redis, and RabbitMQ:
+Every service exposes `/healthcheck`. Docker Compose health checks run automatically. To test manually:
 
 ```bash
-# Start all infrastructure
-docker-compose up -d
-
-# Or start specific services
-docker-compose up -d postgres-auth redis rabbitmq
+curl http://localhost:3000/healthcheck   # API Gateway
+curl http://localhost:3001/healthcheck   # Auth
+curl http://localhost:3002/healthcheck   # User
+curl http://localhost:3003/healthcheck   # RBAC
+curl http://localhost:3004/healthcheck   # Audit
+curl http://localhost:3005/healthcheck   # Patient
+curl http://localhost:3006/healthcheck   # Clinical
+curl http://localhost:3007/healthcheck   # Hospital
 ```
+
+### Docker Architecture
+
+The production Docker setup uses a multi-stage build:
+
+- **`Dockerfile`** — Two-stage build (`builder` + `runner`). The builder installs dependencies via `npm ci`, builds all NestJS services with Turborepo, and builds the Next.js frontend. The runner stage copies the built output for a clean production image.
+- **`docker-entrypoint.sh`** — Entrypoint script for backend services. Runs database seed scripts (auth, rbac, hospital) on first startup using a marker file to prevent re-seeding, then starts the service.
+- **`docker-compose.yml`** — Orchestrates all services with health-check-based dependency chains, `restart: unless-stopped`, and `start_period` grace periods.
+
+All application services share a single Docker image (`clinical-portal`) built once, with different `command` overrides to start each service.
 
 ## 📁 Project Structure
 
@@ -141,24 +163,25 @@ docker-compose up -d postgres-auth redis rabbitmq
 clinical-portal/
 ├── apps/
 │   ├── web/                    # Next.js frontend
-│   ├── api-gateway/            # API Gateway
-│   ├── auth-service/           # Authentication service
-│   ├── user-service/           # User management service
-│   ├── rbac-service/           # RBAC service
-│   └── audit-service/          # Audit logging service
+│   ├── api-gateway/            # API Gateway (port 3000)
+│   ├── auth-service/           # Authentication service (port 3001)
+│   ├── user-service/           # User management service (port 3002)
+│   ├── rbac-service/           # RBAC service (port 3003)
+│   ├── audit-service/          # Audit logging service (port 3004)
+│   ├── patient-service/        # Patient management (port 3005)
+│   ├── clinical-service/       # Clinical workflows (port 3006)
+│   └── hospital-service/       # Hospital/ward/bed management (port 3007)
 ├── packages/
-│   ├── shared-types/           # Shared TypeScript types
-│   ├── shared-config/          # Shared configs
-│   ├── shared-utils/           # Utility functions
-│   ├── api-client/             # Frontend API client
-│   └── rbac/                   # RBAC logic library
+│   └── shared-types/           # Shared TypeScript types
+├── libs/
+│   └── shared/                 # Shared utilities
 ├── infrastructure/
-│   ├── docker/                 # Dockerfiles
-│   ├── monitoring/             # Prometheus/Grafana configs
-│   └── nginx/                  # Nginx configs
-├── scripts/                    # Utility scripts
-├── docs/                       # Documentation
-├── docker-compose.yml
+│   ├── grafana/                # Grafana provisioning & dashboards
+│   ├── prometheus/             # Prometheus config & alerts
+│   └── rabbitmq/               # RabbitMQ definitions & config
+├── Dockerfile                  # Multi-stage production build
+├── docker-entrypoint.sh        # Service startup script with seeding
+├── docker-compose.yml          # Full stack orchestration
 ├── turbo.json
 └── package.json
 ```

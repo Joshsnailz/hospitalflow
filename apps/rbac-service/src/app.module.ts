@@ -40,7 +40,7 @@ import { UserPermissionEntity } from './permissions/entities/user-permission.ent
           RolePermissionEntity,
           UserPermissionEntity,
         ],
-        synchronize: configService.get('NODE_ENV') !== 'production',
+        synchronize: true,
         logging: configService.get('NODE_ENV') === 'development',
       }),
       inject: [ConfigService],

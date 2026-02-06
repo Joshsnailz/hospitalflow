@@ -68,6 +68,98 @@ groups:
           summary: "RabbitMQ queue {{ $labels.queue }} has no consumers"
           description: "Queue has messages but no consumers"
 
+  - name: clinical_service_health
+    rules:
+      # Clinical Service Down
+      - alert: ClinicalServiceDown
+        expr: up{job="clinical-service"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: clinical-service
+        annotations:
+          summary: "Clinical Service is down"
+          description: "Clinical Service has been unreachable for more than 30 seconds. Patient clinical data operations are impacted."
+
+      # Clinical Service High Latency
+      - alert: ClinicalServiceHighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="clinical-service"}[5m])) > 1.5
+        for: 5m
+        labels:
+          severity: warning
+          service: clinical-service
+        annotations:
+          summary: "Clinical Service experiencing high latency"
+          description: "95th percentile response time for Clinical Service is above 1.5 seconds for the last 5 minutes."
+
+      # Clinical Service High Error Rate
+      - alert: ClinicalServiceHighErrorRate
+        expr: rate(http_requests_total{job="clinical-service", status=~"5.."}[5m]) / rate(http_requests_total{job="clinical-service"}[5m]) > 0.03
+        for: 5m
+        labels:
+          severity: warning
+          service: clinical-service
+        annotations:
+          summary: "Clinical Service has a high error rate"
+          description: "Error rate for Clinical Service is above 3% for the last 5 minutes."
+
+      # Clinical Service Critical Error Rate
+      - alert: ClinicalServiceCriticalErrorRate
+        expr: rate(http_requests_total{job="clinical-service", status=~"5.."}[5m]) / rate(http_requests_total{job="clinical-service"}[5m]) > 0.10
+        for: 2m
+        labels:
+          severity: critical
+          service: clinical-service
+        annotations:
+          summary: "Clinical Service has a critical error rate"
+          description: "Error rate for Clinical Service is above 10% for the last 2 minutes. Immediate investigation required."
+
+  - name: hospital_service_health
+    rules:
+      # Hospital Service Down
+      - alert: HospitalServiceDown
+        expr: up{job="hospital-service"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: hospital-service
+        annotations:
+          summary: "Hospital Service is down"
+          description: "Hospital Service has been unreachable for more than 30 seconds. Hospital management operations are impacted."
+
+      # Hospital Service High Latency
+      - alert: HospitalServiceHighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="hospital-service"}[5m])) > 1.5
+        for: 5m
+        labels:
+          severity: warning
+          service: hospital-service
+        annotations:
+          summary: "Hospital Service experiencing high latency"
+          description: "95th percentile response time for Hospital Service is above 1.5 seconds for the last 5 minutes."
+
+      # Hospital Service High Error Rate
+      - alert: HospitalServiceHighErrorRate
+        expr: rate(http_requests_total{job="hospital-service", status=~"5.."}[5m]) / rate(http_requests_total{job="hospital-service"}[5m]) > 0.03
+        for: 5m
+        labels:
+          severity: warning
+          service: hospital-service
+        annotations:
+          summary: "Hospital Service has a high error rate"
+          description: "Error rate for Hospital Service is above 3% for the last 5 minutes."
+
+      # Hospital Service Critical Error Rate
+      - alert: HospitalServiceCriticalErrorRate
+        expr: rate(http_requests_total{job="hospital-service", status=~"5.."}[5m]) / rate(http_requests_total{job="hospital-service"}[5m]) > 0.10
+        for: 2m
+        labels:
+          severity: critical
+          service: hospital-service
+        annotations:
+          summary: "Hospital Service has a critical error rate"
+          description: "Error rate for Hospital Service is above 10% for the last 2 minutes. Immediate investigation required."
+
   - name: security_alerts
     rules:
       # High Failed Login Attempts

@@ -25,6 +25,9 @@ import {
   HelpCircle,
   ScrollText,
   ImageIcon,
+  CalendarDays,
+  Building2,
+  BedDouble,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -84,6 +87,19 @@ function isPatientContext(pathname: string): boolean {
   return patientContextRegex.test(pathname);
 }
 
+// Extract patient ID from URL path when in patient context
+function getPatientIdFromPath(pathname: string): string | null {
+  const match = pathname.match(/^\/patients\/([a-f0-9-]+)/i);
+  return match ? match[1] : null;
+}
+
+// Build href with patient context if available
+function buildHref(href: string, patientId: string | null): string {
+  if (!patientId) return href;
+  const separator = href.includes('?') ? '&' : '?';
+  return `${href}${separator}patientId=${patientId}`;
+}
+
 // Menu Configuration
 const menuConfig: NavSection[] = [
   {
@@ -120,6 +136,24 @@ const menuConfig: NavSection[] = [
             icon: Search,
           },
         ],
+      },
+      {
+        id: 'appointments' as NavItemId,
+        name: 'Appointments',
+        href: '/appointments',
+        icon: CalendarDays,
+      },
+      {
+        id: 'walk-in' as NavItemId,
+        name: 'Walk-in Registration',
+        href: '/appointments/walk-in',
+        icon: UserPlus,
+      },
+      {
+        id: 'ward-view' as NavItemId,
+        name: 'Ward View',
+        href: '/ward',
+        icon: BedDouble,
       },
       {
         id: 'clinical-apps',
@@ -190,6 +224,12 @@ const menuConfig: NavSection[] = [
         icon: Shield,
       },
       {
+        id: 'hospitals' as NavItemId,
+        name: 'Hospital Management',
+        href: '/admin/hospitals',
+        icon: Building2,
+      },
+      {
         id: 'settings' as NavItemId,
         name: 'Settings',
         href: '/admin/settings',
@@ -211,6 +251,7 @@ interface NavItemComponentProps {
   isCollapsed: boolean;
   onClose: () => void;
   nested?: boolean;
+  patientId?: string | null;
 }
 
 function NavItemComponent({
@@ -219,10 +260,12 @@ function NavItemComponent({
   isCollapsed,
   onClose,
   nested = false,
+  patientId,
 }: NavItemComponentProps) {
+  const resolvedHref = patientId ? buildHref(item.href, patientId) : item.href;
   const content = (
     <Link
-      href={item.href}
+      href={resolvedHref}
       onClick={onClose}
       className={cn(
         'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
@@ -260,6 +303,7 @@ interface NavDropdownComponentProps {
   userRole: string | undefined;
   openDropdowns: string[];
   toggleDropdown: (id: string) => void;
+  patientId?: string | null;
 }
 
 function NavDropdownComponent({
@@ -270,6 +314,7 @@ function NavDropdownComponent({
   userRole,
   openDropdowns,
   toggleDropdown,
+  patientId,
 }: NavDropdownComponentProps) {
   // Filter children based on permissions
   const permittedChildren = dropdown.children.filter((child) =>
@@ -309,7 +354,7 @@ function NavDropdownComponent({
             {permittedChildren.map((child) => (
               <Link
                 key={child.id}
-                href={child.href}
+                href={dropdown.requiresPatientContext && patientId ? buildHref(child.href, patientId) : child.href}
                 onClick={onClose}
                 className={cn(
                   'flex items-center gap-2 px-3 py-2 text-sm transition-colors',
@@ -355,10 +400,11 @@ function NavDropdownComponent({
           <NavItemComponent
             key={child.id}
             item={child}
-            isActive={pathname === child.href}
+            isActive={pathname === child.href || pathname.startsWith(child.href + '?')}
             isCollapsed={isCollapsed}
             onClose={onClose}
             nested
+            patientId={dropdown.requiresPatientContext ? patientId : undefined}
           />
         ))}
       </CollapsibleContent>
@@ -374,6 +420,7 @@ interface NavSectionComponentProps {
   userRole: string | undefined;
   openDropdowns: string[];
   toggleDropdown: (id: string) => void;
+  patientId?: string | null;
 }
 
 function NavSectionComponent({
@@ -384,6 +431,7 @@ function NavSectionComponent({
   userRole,
   openDropdowns,
   toggleDropdown,
+  patientId,
 }: NavSectionComponentProps) {
   const inPatientContext = isPatientContext(pathname);
 
@@ -428,6 +476,7 @@ function NavSectionComponent({
                 userRole={userRole}
                 openDropdowns={openDropdowns}
                 toggleDropdown={toggleDropdown}
+                patientId={patientId}
               />
             );
           }
@@ -472,6 +521,7 @@ export function Sidebar({
   };
 
   const inPatientContext = isPatientContext(pathname);
+  const patientId = getPatientIdFromPath(pathname);
 
   // Check which sections have permitted items
   const sectionsWithItems = menuConfig.filter((section) =>
@@ -568,6 +618,7 @@ export function Sidebar({
                   userRole={userRole}
                   openDropdowns={openDropdowns}
                   toggleDropdown={toggleDropdown}
+                  patientId={patientId}
                 />
               </div>
             ))}

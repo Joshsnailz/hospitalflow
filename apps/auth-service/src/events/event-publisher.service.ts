@@ -54,7 +54,7 @@ export interface AuditLogPayload {
 @Injectable()
 export class EventPublisherService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(EventPublisherService.name);
-  private connection: amqp.Connection | null = null;
+  private connection: any = null;
   private channel: amqp.Channel | null = null;
   private isConnected = false;
   private reconnectAttempts = 0;
@@ -78,29 +78,31 @@ export class EventPublisherService implements OnModuleInit, OnModuleDestroy {
     );
 
     try {
-      this.connection = await amqp.connect(rabbitmqUrl);
-      this.channel = await this.connection.createChannel();
+      const conn = await amqp.connect(rabbitmqUrl);
+      this.connection = conn;
+      const ch = await conn.createChannel();
+      this.channel = ch;
 
       // Ensure exchanges exist
-      await this.channel.assertExchange(Exchanges.EVENTS, 'topic', { durable: true });
-      await this.channel.assertExchange(Exchanges.AUDIT, 'direct', { durable: true });
+      await ch.assertExchange(Exchanges.EVENTS, 'topic', { durable: true });
+      await ch.assertExchange(Exchanges.AUDIT, 'direct', { durable: true });
 
       this.isConnected = true;
       this.reconnectAttempts = 0;
       this.logger.log('Connected to RabbitMQ');
 
-      this.connection.on('error', (err) => {
+      conn.on('error', (err: Error) => {
         this.logger.error('RabbitMQ connection error:', err);
         this.isConnected = false;
       });
 
-      this.connection.on('close', () => {
+      conn.on('close', () => {
         this.logger.warn('RabbitMQ connection closed');
         this.isConnected = false;
         this.scheduleReconnect();
       });
     } catch (error) {
-      this.logger.warn(`Failed to connect to RabbitMQ: ${error.message}`);
+      this.logger.warn(`Failed to connect to RabbitMQ: ${(error as Error).message}`);
       this.isConnected = false;
       this.scheduleReconnect();
     }

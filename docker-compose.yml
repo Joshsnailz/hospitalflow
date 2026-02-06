@@ -3,8 +3,11 @@ version: '3.8'
 x-app-base: &app_base
   build:
     context: .
-    dockerfile: Dockerfile.dev
-  image: clinical-portal-dev
+    dockerfile: Dockerfile
+  image: clinical-portal
+  env_file:
+    - .env
+  restart: unless-stopped
 
 services:
   # ===========================================
@@ -27,6 +30,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     networks:
       - clinical-network
 
@@ -46,6 +50,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     networks:
       - clinical-network
 
@@ -65,6 +70,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     networks:
       - clinical-network
 
@@ -84,6 +90,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     networks:
       - clinical-network
 
@@ -103,6 +110,47 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+    networks:
+      - clinical-network
+
+  postgres-clinical:
+    image: postgres:15-alpine
+    container_name: clinical-portal-clinical-db
+    environment:
+      POSTGRES_USER: ${DB_USER:-clinical_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-clinical_password}
+      POSTGRES_DB: clinical_db
+    volumes:
+      - clinical_db_data:/var/lib/postgresql/data
+    ports:
+      - '127.0.0.1:5439:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-clinical_user} -d clinical_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - clinical-network
+
+  postgres-hospital:
+    image: postgres:15-alpine
+    container_name: clinical-portal-hospital-db
+    environment:
+      POSTGRES_USER: ${DB_USER:-clinical_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-clinical_password}
+      POSTGRES_DB: hospital_db
+    volumes:
+      - hospital_db_data:/var/lib/postgresql/data
+    ports:
+      - '127.0.0.1:5440:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-clinical_user} -d hospital_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
     networks:
       - clinical-network
 
@@ -122,13 +170,14 @@ services:
       - ./infrastructure/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
       - ./infrastructure/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     ports:
-      - '5672:5672' # AMQP
-      - '15672:15672' # Management UI
+      - '5672:5672'
+      - '15672:15672'
     healthcheck:
       test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
       interval: 30s
       timeout: 10s
       retries: 5
+    restart: unless-stopped
     networks:
       - clinical-network
 
@@ -149,6 +198,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     networks:
       - clinical-network
 
@@ -175,6 +225,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    restart: unless-stopped
+    depends_on:
+      api-gateway:
+        condition: service_healthy
     networks:
       - clinical-network
 
@@ -193,25 +247,27 @@ services:
     ports:
       - '3200:3000'
     depends_on:
-      - prometheus
+      prometheus:
+        condition: service_healthy
     healthcheck:
       test: ['CMD-SHELL', 'wget -q --spider http://localhost:3000/api/health || exit 1']
       interval: 30s
       timeout: 10s
       retries: 3
+    restart: unless-stopped
     networks:
       - clinical-network
 
   # ===========================================
-  # APPLICATION (Full stack)
+  # APPLICATION SERVICES
   # ===========================================
 
   auth-service:
     <<: *app_base
     container_name: clinical-portal-auth-service
-    command: npm run start:dev --prefix apps/auth-service
+    command: sh /repo/docker-entrypoint.sh auth-service
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3001
       AUTH_DB_HOST: postgres-auth
       AUTH_DB_PORT: 5432
@@ -225,9 +281,14 @@ services:
       BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
       CORS_ORIGIN: http://localhost:3100
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-clinical_user}:${RABBITMQ_PASSWORD:-rabbitmq_password}@rabbitmq:5672/clinical_portal
-      CHOKIDAR_USEPOLLING: 'true'
     ports:
       - '3001:3001'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:3001/healthcheck']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     depends_on:
       postgres-auth:
         condition: service_healthy
@@ -239,9 +300,9 @@ services:
   user-service:
     <<: *app_base
     container_name: clinical-portal-user-service
-    command: npm run start:dev --prefix apps/user-service
+    command: sh /repo/docker-entrypoint.sh user-service
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3002
       USER_DB_HOST: postgres-user
       USER_DB_PORT: 5432
@@ -253,14 +314,19 @@ services:
       AUTH_SERVICE_INTERNAL_KEY: internal-service-communication-key
       CORS_ORIGIN: http://localhost:3100
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-clinical_user}:${RABBITMQ_PASSWORD:-rabbitmq_password}@rabbitmq:5672/clinical_portal
-      CHOKIDAR_USEPOLLING: 'true'
     ports:
       - '3002:3002'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:3002/healthcheck']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     depends_on:
       postgres-user:
         condition: service_healthy
       auth-service:
-        condition: service_started
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
     networks:
@@ -269,9 +335,9 @@ services:
   rbac-service:
     <<: *app_base
     container_name: clinical-portal-rbac-service
-    command: npm run start:dev --prefix apps/rbac-service
+    command: sh /repo/docker-entrypoint.sh rbac-service
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3003
       RBAC_DB_HOST: postgres-rbac
       RBAC_DB_PORT: 5432
@@ -284,9 +350,14 @@ services:
       REDIS_CACHE_TTL: 3600
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production-min-32-chars}
       CORS_ORIGIN: http://localhost:3100
-      CHOKIDAR_USEPOLLING: 'true'
     ports:
       - '3003:3003'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:3003/healthcheck']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     depends_on:
       postgres-rbac:
         condition: service_healthy
@@ -298,9 +369,9 @@ services:
   audit-service:
     <<: *app_base
     container_name: clinical-portal-audit-service
-    command: npm run start:dev --prefix apps/audit-service
+    command: sh /repo/docker-entrypoint.sh audit-service
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3004
       AUDIT_DB_HOST: postgres-audit
       AUDIT_DB_PORT: 5432
@@ -313,9 +384,14 @@ services:
       AUDIT_QUEUE: audit.logs
       AUDIT_DATA_ACCESS_QUEUE: audit.data-access
       AUDIT_RETENTION_DAYS: 2555
-      CHOKIDAR_USEPOLLING: 'true'
     ports:
       - '3004:3004'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:3004/healthcheck']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     depends_on:
       postgres-audit:
         condition: service_healthy
@@ -327,9 +403,9 @@ services:
   patient-service:
     <<: *app_base
     container_name: clinical-portal-patient-service
-    command: npm run start:dev --prefix apps/patient-service
+    command: sh /repo/docker-entrypoint.sh patient-service
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3005
       PATIENT_DB_HOST: postgres-patient
       PATIENT_DB_PORT: 5432
@@ -338,11 +414,81 @@ services:
       PATIENT_DB_NAME: patient_db
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production-min-32-chars}
       CORS_ORIGIN: http://localhost:3100
-      CHOKIDAR_USEPOLLING: 'true'
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-clinical_user}:${RABBITMQ_PASSWORD:-rabbitmq_password}@rabbitmq:5672/clinical_portal
     ports:
       - '3005:3005'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:3005/healthcheck']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     depends_on:
       postgres-patient:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - clinical-network
+
+  clinical-service:
+    <<: *app_base
+    container_name: clinical-portal-clinical-service
+    command: sh /repo/docker-entrypoint.sh clinical-service
+    environment:
+      NODE_ENV: production
+      PORT: 3006
+      CLINICAL_DB_HOST: postgres-clinical
+      CLINICAL_DB_PORT: 5432
+      CLINICAL_DB_USER: ${DB_USER:-clinical_user}
+      CLINICAL_DB_PASSWORD: ${DB_PASSWORD:-clinical_password}
+      CLINICAL_DB_NAME: clinical_db
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production-min-32-chars}
+      CORS_ORIGIN: http://localhost:3100
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-clinical_user}:${RABBITMQ_PASSWORD:-rabbitmq_password}@rabbitmq:5672/clinical_portal
+    ports:
+      - '3006:3006'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:3006/healthcheck']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      postgres-clinical:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - clinical-network
+
+  hospital-service:
+    <<: *app_base
+    container_name: clinical-portal-hospital-service
+    command: sh /repo/docker-entrypoint.sh hospital-service
+    environment:
+      NODE_ENV: production
+      PORT: 3007
+      HOSPITAL_DB_HOST: postgres-hospital
+      HOSPITAL_DB_PORT: 5432
+      HOSPITAL_DB_USER: ${DB_USER:-clinical_user}
+      HOSPITAL_DB_PASSWORD: ${DB_PASSWORD:-clinical_password}
+      HOSPITAL_DB_NAME: hospital_db
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production-min-32-chars}
+      CORS_ORIGIN: http://localhost:3100
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-clinical_user}:${RABBITMQ_PASSWORD:-rabbitmq_password}@rabbitmq:5672/clinical_portal
+    ports:
+      - '3007:3007'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:3007/healthcheck']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      postgres-hospital:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - clinical-network
@@ -350,48 +496,65 @@ services:
   api-gateway:
     <<: *app_base
     container_name: clinical-portal-api-gateway
-    command: npm run start:dev --prefix apps/api-gateway
+    command: sh /repo/docker-entrypoint.sh api-gateway
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3000
       AUTH_SERVICE_URL: http://auth-service:3001
       USER_SERVICE_URL: http://user-service:3002
       RBAC_SERVICE_URL: http://rbac-service:3003
       AUDIT_SERVICE_URL: http://audit-service:3004
       PATIENT_SERVICE_URL: http://patient-service:3005
+      CLINICAL_SERVICE_URL: http://clinical-service:3006
+      HOSPITAL_SERVICE_URL: http://hospital-service:3007
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production-min-32-chars}
       CORS_ORIGIN: http://localhost:3100
-      CHOKIDAR_USEPOLLING: 'true'
     ports:
       - '3000:3000'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:3000/healthcheck']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     depends_on:
       auth-service:
-        condition: service_started
+        condition: service_healthy
       user-service:
-        condition: service_started
+        condition: service_healthy
       rbac-service:
-        condition: service_started
+        condition: service_healthy
       audit-service:
-        condition: service_started
+        condition: service_healthy
       patient-service:
-        condition: service_started
+        condition: service_healthy
+      clinical-service:
+        condition: service_healthy
+      hospital-service:
+        condition: service_healthy
     networks:
       - clinical-network
 
   web:
     <<: *app_base
     container_name: clinical-portal-web
-    command: npm run dev --prefix apps/web -- -H 0.0.0.0
+    command: node apps/web/.next/standalone/apps/web/server.js
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
+      PORT: 3100
+      HOSTNAME: 0.0.0.0
       NEXT_PUBLIC_API_URL: http://localhost:3000
-      WATCHPACK_POLLING: 'true'
-      CHOKIDAR_USEPOLLING: 'true'
     ports:
       - '3100:3100'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:3100']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     depends_on:
       api-gateway:
-        condition: service_started
+        condition: service_healthy
     networks:
       - clinical-network
 
@@ -401,6 +564,8 @@ volumes:
   rbac_db_data:
   audit_db_data:
   patient_db_data:
+  clinical_db_data:
+  hospital_db_data:
   rabbitmq_data:
   redis_data:
   prometheus_data:

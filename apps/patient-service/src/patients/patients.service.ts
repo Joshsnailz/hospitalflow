@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -27,9 +28,12 @@ import {
   UpdateMedicalAidDto,
 } from './dto';
 import { validateChiNumber, normalizeChiNumber } from '../common/utils/chi-validator.util';
+import { EventPublisherService } from '../events/event-publisher.service';
 
 @Injectable()
 export class PatientsService {
+  private readonly logger = new Logger(PatientsService.name);
+
   constructor(
     @InjectRepository(PatientEntity)
     private readonly patientRepository: Repository<PatientEntity>,
@@ -41,6 +45,7 @@ export class PatientsService {
     private readonly allergyRepository: Repository<PatientAllergyEntity>,
     @InjectRepository(PatientMedicalAidEntity)
     private readonly medicalAidRepository: Repository<PatientMedicalAidEntity>,
+    private readonly eventPublisher: EventPublisherService,
   ) {}
 
   // ==================== Patient CRUD ====================
@@ -70,7 +75,18 @@ export class PatientsService {
       createdBy: createdById,
     });
 
-    return this.patientRepository.save(patient);
+    const saved = await this.patientRepository.save(patient);
+
+    // Audit trail
+    this.eventPublisher.publishAuditLog({
+      userId: createdById,
+      action: 'patient.created',
+      resource: 'patient',
+      resourceId: saved.id,
+      status: 'success',
+    });
+
+    return saved;
   }
 
   async findAll(filterDto: PatientFilterDto): Promise<{
@@ -197,12 +213,42 @@ export class PatientsService {
   ): Promise<PatientEntity> {
     const patient = await this.findOne(id);
 
+    // Track changes for event publishing
+    const changes: Record<string, { old: any; new: any }> = {};
+    for (const [key, newValue] of Object.entries(updatePatientDto)) {
+      if (newValue !== undefined && (patient as any)[key] !== newValue) {
+        changes[key] = { old: (patient as any)[key], new: newValue };
+      }
+    }
+
     Object.assign(patient, {
       ...updatePatientDto,
       updatedBy: updatedById,
     });
 
-    return this.patientRepository.save(patient);
+    const saved = await this.patientRepository.save(patient);
+
+    // Publish patient.updated event so clinical-service cascades changes
+    if (Object.keys(changes).length > 0) {
+      this.eventPublisher.publishPatientUpdated({
+        patientId: saved.id,
+        chiNumber: saved.chiNumber,
+        firstName: saved.firstName,
+        lastName: saved.lastName,
+        changes,
+      });
+    }
+
+    // Audit trail
+    this.eventPublisher.publishAuditLog({
+      userId: updatedById,
+      action: 'patient.updated',
+      resource: 'patient',
+      resourceId: saved.id,
+      status: 'success',
+    });
+
+    return saved;
   }
 
   async deactivate(id: string, deactivatedById: string): Promise<PatientEntity> {
@@ -217,7 +263,25 @@ export class PatientsService {
     patient.deactivatedBy = deactivatedById;
     patient.updatedBy = deactivatedById;
 
-    return this.patientRepository.save(patient);
+    const saved = await this.patientRepository.save(patient);
+
+    // Publish patient.deactivated event so clinical-service cancels appointments
+    this.eventPublisher.publishPatientDeactivated({
+      patientId: saved.id,
+      chiNumber: saved.chiNumber,
+      deactivatedBy: deactivatedById,
+    });
+
+    // Audit trail
+    this.eventPublisher.publishAuditLog({
+      userId: deactivatedById,
+      action: 'patient.deactivated',
+      resource: 'patient',
+      resourceId: saved.id,
+      status: 'success',
+    });
+
+    return saved;
   }
 
   async reactivate(id: string, reactivatedById: string): Promise<PatientEntity> {
@@ -232,7 +296,24 @@ export class PatientsService {
     patient.deactivatedBy = null;
     patient.updatedBy = reactivatedById;
 
-    return this.patientRepository.save(patient);
+    const saved = await this.patientRepository.save(patient);
+
+    // Publish reactivation event
+    this.eventPublisher.publishPatientReactivated({
+      patientId: saved.id,
+      chiNumber: saved.chiNumber,
+    });
+
+    // Audit trail
+    this.eventPublisher.publishAuditLog({
+      userId: reactivatedById,
+      action: 'patient.reactivated',
+      resource: 'patient',
+      resourceId: saved.id,
+      status: 'success',
+    });
+
+    return saved;
   }
 
   // ==================== Next of Kin ====================

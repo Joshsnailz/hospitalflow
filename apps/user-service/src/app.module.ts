@@ -27,7 +27,7 @@ import { UserEntity } from './users/entities/user.entity';
         password: configService.get('USER_DB_PASSWORD', 'clinical_password'),
         database: configService.get('USER_DB_NAME', 'user_db'),
         entities: [UserEntity],
-        synchronize: configService.get('NODE_ENV') !== 'production',
+        synchronize: true,
         logging: configService.get('NODE_ENV') === 'development',
       }),
       inject: [ConfigService],

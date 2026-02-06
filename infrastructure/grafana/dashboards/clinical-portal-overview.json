@@ -54,7 +54,7 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 4,
+        "w": 3,
         "x": 0,
         "y": 0
       },
@@ -122,8 +122,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 4,
-        "x": 4,
+        "w": 3,
+        "x": 3,
         "y": 0
       },
       "id": 2,
@@ -188,8 +188,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 4,
-        "x": 8,
+        "w": 3,
+        "x": 6,
         "y": 0
       },
       "id": 3,
@@ -254,11 +254,77 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 4,
-        "x": 12,
+        "w": 3,
+        "x": 9,
         "y": 0
       },
       "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "expr": "up{job=\"rbac-service\"}",
+          "refId": "A"
+        }
+      ],
+      "title": "RBAC Service",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "index": 1,
+                  "text": "DOWN"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "UP"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 12,
+        "y": 0
+      },
+      "id": 5,
       "options": {
         "colorMode": "value",
         "graphMode": "none",
@@ -320,11 +386,11 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 4,
-        "x": 16,
+        "w": 3,
+        "x": 15,
         "y": 0
       },
-      "id": 5,
+      "id": 6,
       "options": {
         "colorMode": "value",
         "graphMode": "none",
@@ -386,11 +452,11 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 4,
-        "x": 20,
+        "w": 3,
+        "x": 18,
         "y": 0
       },
-      "id": 6,
+      "id": 11,
       "options": {
         "colorMode": "value",
         "graphMode": "none",
@@ -404,11 +470,77 @@
       },
       "targets": [
         {
-          "expr": "up{job=\"rbac-service\"}",
+          "expr": "up{job=\"clinical-service\"}",
           "refId": "A"
         }
       ],
-      "title": "RBAC Service",
+      "title": "Clinical Service",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "index": 1,
+                  "text": "DOWN"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "UP"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 21,
+        "y": 0
+      },
+      "id": 12,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "expr": "up{job=\"hospital-service\"}",
+          "refId": "A"
+        }
+      ],
+      "title": "Hospital Service",
       "type": "stat"
     },
     {
@@ -482,12 +614,47 @@
       },
       "targets": [
         {
-          "expr": "rate(http_requests_total[5m])",
-          "legendFormat": "{{job}} - {{method}} {{path}}",
+          "expr": "sum(rate(http_requests_total{job=\"api-gateway\"}[5m]))",
+          "legendFormat": "api-gateway",
           "refId": "A"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=\"auth-service\"}[5m]))",
+          "legendFormat": "auth-service",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=\"user-service\"}[5m]))",
+          "legendFormat": "user-service",
+          "refId": "C"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=\"rbac-service\"}[5m]))",
+          "legendFormat": "rbac-service",
+          "refId": "D"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=\"audit-service\"}[5m]))",
+          "legendFormat": "audit-service",
+          "refId": "E"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=\"patient-service\"}[5m]))",
+          "legendFormat": "patient-service",
+          "refId": "F"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=\"clinical-service\"}[5m]))",
+          "legendFormat": "clinical-service",
+          "refId": "G"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=\"hospital-service\"}[5m]))",
+          "legendFormat": "hospital-service",
+          "refId": "H"
         }
       ],
-      "title": "Request Rate",
+      "title": "Request Rate by Service",
       "type": "timeseries"
     },
     {
@@ -557,7 +724,7 @@
       "id": 8,
       "options": {
         "legend": {
-          "calcs": ["mean", "max", "p95"],
+          "calcs": ["mean", "max"],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -569,12 +736,169 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
-          "legendFormat": "{{job}} p95",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"api-gateway\"}[5m])) by (le))",
+          "legendFormat": "api-gateway p95",
           "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"auth-service\"}[5m])) by (le))",
+          "legendFormat": "auth-service p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"user-service\"}[5m])) by (le))",
+          "legendFormat": "user-service p95",
+          "refId": "C"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"rbac-service\"}[5m])) by (le))",
+          "legendFormat": "rbac-service p95",
+          "refId": "D"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"audit-service\"}[5m])) by (le))",
+          "legendFormat": "audit-service p95",
+          "refId": "E"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"patient-service\"}[5m])) by (le))",
+          "legendFormat": "patient-service p95",
+          "refId": "F"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"clinical-service\"}[5m])) by (le))",
+          "legendFormat": "clinical-service p95",
+          "refId": "G"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"hospital-service\"}[5m])) by (le))",
+          "legendFormat": "hospital-service p95",
+          "refId": "H"
         }
       ],
-      "title": "Response Time (p95)",
+      "title": "Response Time p95 by Service",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.01
+              },
+              {
+                "color": "red",
+                "value": 0.05
+              }
+            ]
+          },
+          "unit": "percentunit"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "id": 13,
+      "options": {
+        "legend": {
+          "calcs": ["mean", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{job=\"api-gateway\", status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"api-gateway\"}[5m]))",
+          "legendFormat": "api-gateway",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=\"auth-service\", status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"auth-service\"}[5m]))",
+          "legendFormat": "auth-service",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=\"user-service\", status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"user-service\"}[5m]))",
+          "legendFormat": "user-service",
+          "refId": "C"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=\"rbac-service\", status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"rbac-service\"}[5m]))",
+          "legendFormat": "rbac-service",
+          "refId": "D"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=\"audit-service\", status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"audit-service\"}[5m]))",
+          "legendFormat": "audit-service",
+          "refId": "E"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=\"patient-service\", status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"patient-service\"}[5m]))",
+          "legendFormat": "patient-service",
+          "refId": "F"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=\"clinical-service\", status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"clinical-service\"}[5m]))",
+          "legendFormat": "clinical-service",
+          "refId": "G"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=\"hospital-service\", status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"hospital-service\"}[5m]))",
+          "legendFormat": "hospital-service",
+          "refId": "H"
+        }
+      ],
+      "title": "Error Rate by Service (5xx)",
       "type": "timeseries"
     },
     {
@@ -629,7 +953,7 @@
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 0,
+        "x": 12,
         "y": 12
       },
       "id": 9,
@@ -653,6 +977,128 @@
         }
       ],
       "title": "Audit Logs (per hour)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "s"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "id": 14,
+      "options": {
+        "legend": {
+          "calcs": ["mean", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"api-gateway\"}[5m])) by (le))",
+          "legendFormat": "api-gateway p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"auth-service\"}[5m])) by (le))",
+          "legendFormat": "auth-service p50",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"user-service\"}[5m])) by (le))",
+          "legendFormat": "user-service p50",
+          "refId": "C"
+        },
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"rbac-service\"}[5m])) by (le))",
+          "legendFormat": "rbac-service p50",
+          "refId": "D"
+        },
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"audit-service\"}[5m])) by (le))",
+          "legendFormat": "audit-service p50",
+          "refId": "E"
+        },
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"patient-service\"}[5m])) by (le))",
+          "legendFormat": "patient-service p50",
+          "refId": "F"
+        },
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"clinical-service\"}[5m])) by (le))",
+          "legendFormat": "clinical-service p50",
+          "refId": "G"
+        },
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"hospital-service\"}[5m])) by (le))",
+          "legendFormat": "hospital-service p50",
+          "refId": "H"
+        }
+      ],
+      "title": "Response Time p50 (Median) by Service",
       "type": "timeseries"
     },
     {
@@ -689,7 +1135,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 12
+        "y": 20
       },
       "id": 10,
       "options": {
@@ -717,7 +1163,7 @@
   "refresh": "10s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["clinical-portal", "microservices"],
+  "tags": ["clinical-portal", "microservices", "overview"],
   "templating": {
     "list": []
   },
@@ -729,6 +1175,6 @@
   "timezone": "browser",
   "title": "Clinical Portal - Overview",
   "uid": "clinical-portal-overview",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }

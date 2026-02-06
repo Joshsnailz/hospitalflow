@@ -1,0 +1,9 @@
+export { CreateHospitalDto } from './create-hospital.dto';
+export { UpdateHospitalDto } from './update-hospital.dto';
+export { CreateDepartmentDto } from './create-department.dto';
+export { UpdateDepartmentDto } from './update-department.dto';
+export { CreateWardDto } from './create-ward.dto';
+export { UpdateWardDto } from './update-ward.dto';
+export { CreateBedDto } from './create-bed.dto';
+export { UpdateBedDto } from './update-bed.dto';
+export { HospitalFilterDto } from './hospital-filter.dto';

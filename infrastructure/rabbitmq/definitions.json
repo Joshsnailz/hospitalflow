@@ -109,6 +109,63 @@
       "durable": true,
       "auto_delete": false,
       "arguments": {}
+    },
+    {
+      "name": "clinical-service.patient.updated",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "clinical.dlx",
+        "x-dead-letter-routing-key": "clinical-service.dead"
+      }
+    },
+    {
+      "name": "clinical-service.patient.deactivated",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "clinical.dlx",
+        "x-dead-letter-routing-key": "clinical-service.dead"
+      }
+    },
+    {
+      "name": "clinical-service.user.updated",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "clinical.dlx",
+        "x-dead-letter-routing-key": "clinical-service.dead"
+      }
+    },
+    {
+      "name": "clinical-service.user.deactivated",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "clinical.dlx",
+        "x-dead-letter-routing-key": "clinical-service.dead"
+      }
+    },
+    {
+      "name": "clinical-service.bed.status.changed",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "clinical.dlx",
+        "x-dead-letter-routing-key": "clinical-service.dead"
+      }
+    },
+    {
+      "name": "clinical-service.dead",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
     }
   ],
   "bindings": [
@@ -181,6 +238,48 @@
       "destination": "user.updated.dlq",
       "destination_type": "queue",
       "routing_key": "user.updated.dlq"
+    },
+    {
+      "source": "clinical.events",
+      "vhost": "clinical_portal",
+      "destination": "clinical-service.patient.updated",
+      "destination_type": "queue",
+      "routing_key": "patient.updated"
+    },
+    {
+      "source": "clinical.events",
+      "vhost": "clinical_portal",
+      "destination": "clinical-service.patient.deactivated",
+      "destination_type": "queue",
+      "routing_key": "patient.deactivated"
+    },
+    {
+      "source": "clinical.events",
+      "vhost": "clinical_portal",
+      "destination": "clinical-service.user.updated",
+      "destination_type": "queue",
+      "routing_key": "user.updated"
+    },
+    {
+      "source": "clinical.events",
+      "vhost": "clinical_portal",
+      "destination": "clinical-service.user.deactivated",
+      "destination_type": "queue",
+      "routing_key": "user.deactivated"
+    },
+    {
+      "source": "clinical.events",
+      "vhost": "clinical_portal",
+      "destination": "clinical-service.bed.status.changed",
+      "destination_type": "queue",
+      "routing_key": "bed.status.changed"
+    },
+    {
+      "source": "clinical.dlx",
+      "vhost": "clinical_portal",
+      "destination": "clinical-service.dead",
+      "destination_type": "queue",
+      "routing_key": "clinical-service.dead"
     }
   ]
 }

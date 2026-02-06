@@ -64,6 +64,62 @@ async function seed() {
     await userRepository.save(doctorUser);
     console.log('Doctor user created: doctor@clinical-portal.com / Doctor123!');
 
+    // Create a clinical admin user
+    const clinicalAdminHash = await bcrypt.hash('ClinAdmin123!', 12);
+    const clinicalAdminUser = userRepository.create({
+      email: 'clinicaladmin@clinical-portal.com',
+      passwordHash: clinicalAdminHash,
+      firstName: 'Sarah',
+      lastName: 'Moyo',
+      role: 'clinical_admin',
+      isActive: true,
+      isEmailVerified: true,
+    });
+    await userRepository.save(clinicalAdminUser);
+    console.log('Clinical Admin created: clinicaladmin@clinical-portal.com / ClinAdmin123!');
+
+    // Create a nurse user
+    const nurseHash = await bcrypt.hash('Nurse123!', 12);
+    const nurseUser = userRepository.create({
+      email: 'nurse@clinical-portal.com',
+      passwordHash: nurseHash,
+      firstName: 'Grace',
+      lastName: 'Ndlovu',
+      role: 'nurse',
+      isActive: true,
+      isEmailVerified: true,
+    });
+    await userRepository.save(nurseUser);
+    console.log('Nurse created: nurse@clinical-portal.com / Nurse123!');
+
+    // Create a pharmacist user
+    const pharmacistHash = await bcrypt.hash('Pharma123!', 12);
+    const pharmacistUser = userRepository.create({
+      email: 'pharmacist@clinical-portal.com',
+      passwordHash: pharmacistHash,
+      firstName: 'Tendai',
+      lastName: 'Chirwa',
+      role: 'hospital_pharmacist',
+      isActive: true,
+      isEmailVerified: true,
+    });
+    await userRepository.save(pharmacistUser);
+    console.log('Pharmacist created: pharmacist@clinical-portal.com / Pharma123!');
+
+    // Create a consultant user
+    const consultantHash = await bcrypt.hash('Consult123!', 12);
+    const consultantUser = userRepository.create({
+      email: 'consultant@clinical-portal.com',
+      passwordHash: consultantHash,
+      firstName: 'Tatenda',
+      lastName: 'Mutasa',
+      role: 'consultant',
+      isActive: true,
+      isEmailVerified: true,
+    });
+    await userRepository.save(consultantUser);
+    console.log('Consultant created: consultant@clinical-portal.com / Consult123!');
+
     console.log('Seed completed successfully');
     await dataSource.destroy();
   } catch (error) {

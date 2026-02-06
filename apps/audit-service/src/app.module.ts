@@ -28,7 +28,7 @@ import { DataAccessLogEntity } from './audit/entities/data-access-log.entity';
         password: configService.get('AUDIT_DB_PASSWORD', 'clinical_password'),
         database: configService.get('AUDIT_DB_NAME', 'audit_db'),
         entities: [AuditLogEntity, DataAccessLogEntity],
-        synchronize: configService.get('NODE_ENV') !== 'production',
+        synchronize: true,
         logging: configService.get('NODE_ENV') === 'development',
       }),
       inject: [ConfigService],

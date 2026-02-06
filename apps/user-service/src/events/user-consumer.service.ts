@@ -54,7 +54,7 @@ interface UserDeactivatedEvent {
 @Injectable()
 export class UserConsumerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(UserConsumerService.name);
-  private connection: amqp.Connection | null = null;
+  private connection: any = null;
   private channel: amqp.Channel | null = null;
   private isConnected = false;
   private reconnectAttempts = 0;
@@ -87,11 +87,13 @@ export class UserConsumerService implements OnModuleInit, OnModuleDestroy {
     );
 
     try {
-      this.connection = await amqp.connect(rabbitmqUrl);
-      this.channel = await this.connection.createChannel();
+      const conn = await amqp.connect(rabbitmqUrl);
+      this.connection = conn;
+      const ch = await conn.createChannel();
+      this.channel = ch;
 
       // Ensure exchange exists
-      await this.channel.assertExchange(this.EXCHANGE, 'topic', { durable: true });
+      await ch.assertExchange(this.EXCHANGE, 'topic', { durable: true });
 
       // Setup queues with DLX
       const queueOptions = {
@@ -101,41 +103,41 @@ export class UserConsumerService implements OnModuleInit, OnModuleDestroy {
       };
 
       // User created queue
-      await this.channel.assertQueue(this.QUEUE_USER_CREATED, queueOptions);
-      await this.channel.bindQueue(this.QUEUE_USER_CREATED, this.EXCHANGE, 'user.created');
+      await ch.assertQueue(this.QUEUE_USER_CREATED, queueOptions);
+      await ch.bindQueue(this.QUEUE_USER_CREATED, this.EXCHANGE, 'user.created');
 
       // User activated queue
-      await this.channel.assertQueue(this.QUEUE_USER_ACTIVATED, queueOptions);
-      await this.channel.bindQueue(this.QUEUE_USER_ACTIVATED, this.EXCHANGE, 'user.activated');
+      await ch.assertQueue(this.QUEUE_USER_ACTIVATED, queueOptions);
+      await ch.bindQueue(this.QUEUE_USER_ACTIVATED, this.EXCHANGE, 'user.activated');
 
       // User deactivated queue
-      await this.channel.assertQueue(this.QUEUE_USER_DEACTIVATED, queueOptions);
-      await this.channel.bindQueue(this.QUEUE_USER_DEACTIVATED, this.EXCHANGE, 'user.deactivated');
+      await ch.assertQueue(this.QUEUE_USER_DEACTIVATED, queueOptions);
+      await ch.bindQueue(this.QUEUE_USER_DEACTIVATED, this.EXCHANGE, 'user.deactivated');
 
       // Set prefetch
-      await this.channel.prefetch(10);
+      await ch.prefetch(10);
 
       // Start consuming
-      await this.channel.consume(this.QUEUE_USER_CREATED, this.handleUserCreated.bind(this));
-      await this.channel.consume(this.QUEUE_USER_ACTIVATED, this.handleUserActivated.bind(this));
-      await this.channel.consume(this.QUEUE_USER_DEACTIVATED, this.handleUserDeactivated.bind(this));
+      await ch.consume(this.QUEUE_USER_CREATED, this.handleUserCreated.bind(this));
+      await ch.consume(this.QUEUE_USER_ACTIVATED, this.handleUserActivated.bind(this));
+      await ch.consume(this.QUEUE_USER_DEACTIVATED, this.handleUserDeactivated.bind(this));
 
       this.isConnected = true;
       this.reconnectAttempts = 0;
       this.logger.log('Connected to RabbitMQ and consuming user events');
 
-      this.connection.on('error', (err) => {
+      conn.on('error', (err: Error) => {
         this.logger.error('RabbitMQ connection error:', err);
         this.isConnected = false;
       });
 
-      this.connection.on('close', () => {
+      conn.on('close', () => {
         this.logger.warn('RabbitMQ connection closed');
         this.isConnected = false;
         this.scheduleReconnect();
       });
     } catch (error) {
-      this.logger.warn(`Failed to connect to RabbitMQ: ${error.message}`);
+      this.logger.warn(`Failed to connect to RabbitMQ: ${(error as Error).message}`);
       this.isConnected = false;
       this.scheduleReconnect();
     }

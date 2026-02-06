@@ -9,6 +9,7 @@ import {
   PatientAllergyEntity,
   PatientMedicalAidEntity,
 } from './entities';
+import { EventPublisherService } from '../events/event-publisher.service';
 
 @Module({
   imports: [
@@ -21,7 +22,7 @@ import {
     ]),
   ],
   controllers: [PatientsController],
-  providers: [PatientsService],
+  providers: [PatientsService, EventPublisherService],
   exports: [PatientsService],
 })
 export class PatientsModule {}

@@ -6,6 +6,9 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { RbacModule } from './rbac/rbac.module';
 import { PatientsModule } from './patients/patients.module';
+import { ClinicalModule } from './clinical/clinical.module';
+import { HospitalsModule } from './hospitals/hospitals.module';
+import { AuditModule } from './audit/audit.module';
 import { HealthModule } from './health/health.module';
 import { LoggingMiddleware } from './middleware/logging.middleware';
 
@@ -40,6 +43,9 @@ import { LoggingMiddleware } from './middleware/logging.middleware';
     UsersModule,
     RbacModule,
     PatientsModule,
+    ClinicalModule,
+    HospitalsModule,
+    AuditModule,
     HealthModule,
   ],
 })

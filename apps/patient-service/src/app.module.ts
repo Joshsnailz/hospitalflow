@@ -37,7 +37,7 @@ import {
           PatientAllergyEntity,
           PatientMedicalAidEntity,
         ],
-        synchronize: configService.get('NODE_ENV') !== 'production',
+        synchronize: true,
         logging: configService.get('NODE_ENV') === 'development',
       }),
       inject: [ConfigService],

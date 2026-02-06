@@ -13,6 +13,7 @@ export const ROLES = {
   PHARMACY_TECHNICIAN: 'pharmacy_technician',
   PHARMACY_SUPPORT_WORKER: 'pharmacy_support_worker',
   PHARMACY_SUPPORT_MANAGER: 'pharmacy_support_manager',
+  NURSE: 'nurse',
 } as const;
 
 export type UserRole = (typeof ROLES)[keyof typeof ROLES];
@@ -50,6 +51,7 @@ export const ROLE_HIERARCHY: Record<UserRole, number> = {
   [ROLES.PHARMACY_SUPPORT_MANAGER]: 35,
   [ROLES.PHARMACY_TECHNICIAN]: 30,
   [ROLES.PHARMACY_SUPPORT_WORKER]: 20,
+  [ROLES.NURSE]: 55,
 };
 
 /**
@@ -64,4 +66,5 @@ export const PATIENT_ACCESS_ROLES: UserRole[] = [
   ROLES.HOSPITAL_PHARMACIST,
   ROLES.PHARMACY_TECHNICIAN,
   ROLES.PHARMACY_SUPPORT_MANAGER,
+  ROLES.NURSE,
 ];
