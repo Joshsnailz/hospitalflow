@@ -31,7 +31,9 @@ COPY apps/ apps/
 # Build all NestJS backend services + API gateway via turbo
 RUN npx turbo run build --filter='./apps/*-service' --filter='./apps/api-gateway'
 
-# Build Next.js web app
+# Build Next.js web app (NEXT_PUBLIC_ vars must be set at build time)
+ARG NEXT_PUBLIC_API_URL=http://localhost:3000
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm run build --prefix apps/web
 
 # Copy static assets into standalone output (required for standalone mode)

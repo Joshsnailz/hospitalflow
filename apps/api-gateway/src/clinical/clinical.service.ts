@@ -675,7 +675,7 @@ export class ClinicalService {
   async getDashboardStats(query: Record<string, any>, authHeader: string) {
     try {
       const response = await firstValueFrom(
-        this.httpService.get('/dashboard/stats', {
+        this.httpService.get('/clinical/dashboard/stats', {
           headers: { Authorization: authHeader },
           params: query,
         }),

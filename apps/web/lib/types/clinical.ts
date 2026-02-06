@@ -305,70 +305,106 @@ export interface CreateCarePlanDto {
   notes?: string;
 }
 
-export interface DashboardStats {
-  role: string;
-  totalPatients: number;
-  todayAppointments: number;
-  upcomingAppointments: Appointment[];
-  activeDischargeForms: number;
-  pendingImagingRequests: number;
-  emergencyVisits: number;
-  activeCarePlans: number;
-  activeEncounters: number;
-  recentActivities: DashboardActivity[];
-  // Role-specific
-  controlledDrugEntries?: number;
-  pharmacyDischargesPending?: number;
-  wardOccupancy?: number;
-  bedAvailability?: number;
-  monthlyPatientsSeen?: number;
-  monthlyAppointments?: number;
-  monthlyPrescriptions?: number;
-}
+// ---- Sub-service stat shapes (nested in role-specific dashboard responses) ----
 
-export interface AppointmentDashboardStats {
-  totalToday: number;
-  completed: number;
-  checkedIn: number;
-  noShows: number;
-  cancelled: number;
-  upcoming: number;
-  averageWaitTime: number;
-  byType: Record<string, number>;
-  byDepartment: Record<string, number>;
-}
-
-export interface EncounterDashboardStats {
-  totalActive: number;
-  admitted: number;
-  inTreatment: number;
-  awaitingDischarge: number;
-  discharged: number;
-  averageLengthOfStay: number;
-  byWard: Record<string, number>;
-  byType: Record<string, number>;
-  bedOccupancyRate: number;
-}
-
-export interface EmergencyDashboardStats {
-  totalActive: number;
-  byTriageCategory: Record<TriageCategory, number>;
-  averageWaitTime: number;
-  averageTreatmentTime: number;
-  admissionRate: number;
-  inTreatment: number;
-  awaitingBed: number;
-  discharged24h: number;
-}
-
-export interface DischargeDashboardStats {
-  pendingReview: number;
-  completedToday: number;
-  averageDischargeTime: number;
+export interface DischargeSubStats {
+  activeForms: number;
+  pendingClinicalReview: number;
   pendingPharmacyReview: number;
-  byDischargeType: Record<string, number>;
-  readmissionRate: number;
+  pendingNursingReview: number;
 }
+
+export interface ImagingSubStats {
+  pendingRequests: number;
+  scheduledToday: number;
+  completedToday: number;
+  urgentPending: number;
+}
+
+export interface CarePlanSubStats {
+  activePlans: number;
+  reviewsDueThisWeek: number;
+  overdueReviews: number;
+  completedThisMonth: number;
+}
+
+export interface ControlledDrugSubStats {
+  totalEntriesToday: number;
+  bySchedule: Array<{ schedule: string; count: string }>;
+  topDrugs: Array<{ drugName: string; count: string }>;
+}
+
+// ---- Role-specific dashboard responses ----
+
+export interface AdminDashboardStats {
+  role: 'admin';
+  patientFlow: {
+    totalPatientsRegistered: number;
+    scheduledToday: number;
+    checkedInToday: number;
+    currentlyAdmitted: number;
+    awaitingDischarge: number;
+    dischargedToday: number;
+  };
+  emergency: {
+    emergencyWaiting: number;
+    emergencyBeingSeen: number;
+  };
+  appointments: {
+    appointmentsCompletedToday: number;
+    appointmentsCancelledToday: number;
+    appointmentsNoShowToday: number;
+  };
+  discharge: DischargeSubStats;
+  imaging: ImagingSubStats;
+  controlledDrugs: ControlledDrugSubStats;
+  carePlans: CarePlanSubStats;
+}
+
+export interface DoctorDashboardStats {
+  role: 'doctor';
+  myAppointmentsToday: number;
+  patientsInProgress: number;
+  activeEncounters: number;
+  pendingDischarges: number;
+  completedToday: number;
+  carePlans: CarePlanSubStats;
+}
+
+export interface NurseDashboardStats {
+  role: 'nurse';
+  patientsInWard: number;
+  admissionsToday: number;
+  dischargesToday: number;
+  pendingAssessments: number;
+  carePlans: CarePlanSubStats;
+}
+
+export interface PharmacistDashboardStats {
+  role: 'pharmacist';
+  pendingPharmacyReviews: number;
+  controlledDrugEntriesToday: number;
+  discharge: DischargeSubStats;
+  controlledDrugs: ControlledDrugSubStats;
+}
+
+export interface DefaultDashboardStats {
+  role: string;
+  encounters?: Record<string, any>;
+  appointments?: Record<string, any>;
+  discharge?: Record<string, any>;
+  imaging?: Record<string, any>;
+  controlledDrugs?: Record<string, any>;
+  emergency?: Record<string, any>;
+  carePlans?: Record<string, any>;
+}
+
+export type DashboardStats =
+  | AdminDashboardStats
+  | DoctorDashboardStats
+  | NurseDashboardStats
+  | PharmacistDashboardStats
+  | DefaultDashboardStats;
 
 export interface HospitalDashboardStats {
   totalBeds: number;
@@ -377,14 +413,4 @@ export interface HospitalDashboardStats {
   occupancyRate: number;
   byWard: Record<string, { total: number; occupied: number; available: number }>;
   maintenanceBeds: number;
-}
-
-export interface DashboardActivity {
-  id: string;
-  type: string;
-  title: string;
-  description: string;
-  timestamp: string;
-  userId: string;
-  userName?: string;
 }

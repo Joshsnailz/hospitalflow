@@ -13,12 +13,11 @@ import type {
   CreateEmergencyVisitDto,
   CarePlan,
   CreateCarePlanDto,
-  DashboardStats,
 } from '../types/clinical';
 
 export const clinicalApi = {
-  // Dashboard
-  getDashboardStats: async (params?: Record<string, any>): Promise<{ success: boolean; data: DashboardStats }> => {
+  // Dashboard — returns role-specific stats based on the authenticated user's role
+  getDashboardStats: async (params?: Record<string, any>): Promise<{ success: boolean; data: any }> => {
     const response = await apiClient.get('/dashboard/stats', { params });
     return response.data;
   },
@@ -256,23 +255,4 @@ export const clinicalApi = {
     return response.data;
   },
 
-  getAppointmentDashboardStats: async () => {
-    const response = await apiClient.get('/dashboard/appointments');
-    return response.data;
-  },
-
-  getEncounterDashboardStats: async () => {
-    const response = await apiClient.get('/dashboard/encounters');
-    return response.data;
-  },
-
-  getEmergencyDashboardStats: async () => {
-    const response = await apiClient.get('/dashboard/emergency');
-    return response.data;
-  },
-
-  getDischargeDashboardStats: async () => {
-    const response = await apiClient.get('/dashboard/discharge');
-    return response.data;
-  },
 };
