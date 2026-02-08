@@ -151,7 +151,8 @@ export interface MedicalAid {
 }
 
 export interface CreatePatientDto {
-  chiNumber: string;
+  chiNumber?: string;
+  isEmergency?: boolean;
   firstName: string;
   lastName: string;
   middleName?: string;

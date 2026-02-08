@@ -554,9 +554,9 @@ export default function ControlledDrugsPage() {
                       </TableCell>
                       <TableCell>
                         {entry.patientName || entry.patientId || '--'}
-                        {entry.patientChiNumber && (
+                        {(entry.patientChi || entry.patientChiNumber) && (
                           <span className="block text-xs text-muted-foreground">
-                            CHI: {entry.patientChiNumber}
+                            CHI: {entry.patientChi || entry.patientChiNumber}
                           </span>
                         )}
                       </TableCell>

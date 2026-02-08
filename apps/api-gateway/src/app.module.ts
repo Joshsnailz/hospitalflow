@@ -11,6 +11,7 @@ import { HospitalsModule } from './hospitals/hospitals.module';
 import { AuditModule } from './audit/audit.module';
 import { HealthModule } from './health/health.module';
 import { LoggingMiddleware } from './middleware/logging.middleware';
+import { AuditMiddleware } from './middleware/audit.middleware';
 
 @Module({
   imports: [
@@ -52,5 +53,6 @@ import { LoggingMiddleware } from './middleware/logging.middleware';
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(LoggingMiddleware).forRoutes('*');
+    consumer.apply(AuditMiddleware).forRoutes('*');
   }
 }

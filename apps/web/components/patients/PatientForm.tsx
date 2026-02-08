@@ -17,7 +17,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { patientsApi } from '@/lib/api/patients';
 import type { Patient, CreatePatientDto, Gender, MaritalStatus } from '@/lib/types/patient';
+import { Combobox } from '@/components/ui/combobox';
+import { COUNTRY_OPTIONS, NATIONALITY_OPTIONS } from '@/lib/data/countries';
 import { Loader2, CheckCircle, AlertCircle, User, Phone, MapPin, Stethoscope } from 'lucide-react';
+
+const ZW_PHONE_PATTERN = '^(\\+263|0)\\d{9}$';
+const ZW_PHONE_TITLE = 'Enter a valid Zimbabwean phone number (e.g. 0771234567 or +263771234567)';
 
 interface PatientFormProps {
   patient?: Patient;
@@ -71,7 +76,7 @@ export function PatientForm({ patient, mode }: PatientFormProps) {
     city: patient?.city || '',
     county: patient?.county || '',
     postCode: patient?.postCode || '',
-    country: patient?.country || 'United Kingdom',
+    country: patient?.country || 'Zimbabwe',
     gpName: patient?.gpName || '',
     gpPracticeName: patient?.gpPracticeName || '',
     gpPracticeAddress: patient?.gpPracticeAddress || '',
@@ -116,6 +121,24 @@ export function PatientForm({ patient, mode }: PatientFormProps) {
     e.preventDefault();
     setError('');
     setSuccess('');
+
+    if (mode === 'create') {
+      if (!formData.chiNumber || formData.chiNumber.length !== 11) {
+        setError('CHI number must be exactly 11 characters');
+        return;
+      }
+      if (chiValidation && !chiValidation.isValid) {
+        setError('Please enter a valid CHI number');
+        return;
+      }
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    if (formData.dateOfBirth && formData.dateOfBirth > today) {
+      setError('Date of birth cannot be in the future');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -229,6 +252,8 @@ export function PatientForm({ patient, mode }: PatientFormProps) {
             <Input
               id="dateOfBirth"
               type="date"
+              max={new Date().toISOString().split('T')[0]}
+              min="1900-01-01"
               value={formData.dateOfBirth}
               onChange={(e) => handleChange('dateOfBirth', e.target.value)}
               required
@@ -275,11 +300,12 @@ export function PatientForm({ patient, mode }: PatientFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="nationality">Nationality</Label>
-            <Input
+            <Combobox
               id="nationality"
               value={formData.nationality}
-              onChange={(e) => handleChange('nationality', e.target.value)}
-              placeholder="British"
+              onChange={(value) => handleChange('nationality', value)}
+              items={NATIONALITY_OPTIONS}
+              placeholder="Search nationality..."
             />
           </div>
 
@@ -329,9 +355,12 @@ export function PatientForm({ patient, mode }: PatientFormProps) {
             <Label htmlFor="phonePrimary">Primary Phone</Label>
             <Input
               id="phonePrimary"
+              type="tel"
+              pattern={ZW_PHONE_PATTERN}
+              title={ZW_PHONE_TITLE}
               value={formData.phonePrimary}
               onChange={(e) => handleChange('phonePrimary', e.target.value)}
-              placeholder="+441234567890"
+              placeholder="0771234567"
             />
           </div>
 
@@ -339,9 +368,12 @@ export function PatientForm({ patient, mode }: PatientFormProps) {
             <Label htmlFor="phoneSecondary">Secondary Phone</Label>
             <Input
               id="phoneSecondary"
+              type="tel"
+              pattern={ZW_PHONE_PATTERN}
+              title={ZW_PHONE_TITLE}
               value={formData.phoneSecondary}
               onChange={(e) => handleChange('phoneSecondary', e.target.value)}
-              placeholder="+441234567891"
+              placeholder="0712345678"
             />
           </div>
         </CardContent>
@@ -400,6 +432,8 @@ export function PatientForm({ patient, mode }: PatientFormProps) {
             <Label htmlFor="postCode">Post Code</Label>
             <Input
               id="postCode"
+              pattern="^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$"
+              title="Enter a valid UK postcode (e.g. SW1A 1AA)"
               value={formData.postCode}
               onChange={(e) => handleChange('postCode', e.target.value.toUpperCase())}
               placeholder="SW1A 1AA"
@@ -408,11 +442,12 @@ export function PatientForm({ patient, mode }: PatientFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="country">Country</Label>
-            <Input
+            <Combobox
               id="country"
               value={formData.country}
-              onChange={(e) => handleChange('country', e.target.value)}
-              placeholder="United Kingdom"
+              onChange={(value) => handleChange('country', value)}
+              items={COUNTRY_OPTIONS}
+              placeholder="Search country..."
             />
           </div>
         </CardContent>
@@ -451,9 +486,12 @@ export function PatientForm({ patient, mode }: PatientFormProps) {
             <Label htmlFor="gpPhone">GP Phone</Label>
             <Input
               id="gpPhone"
+              type="tel"
+              pattern={ZW_PHONE_PATTERN}
+              title={ZW_PHONE_TITLE}
               value={formData.gpPhone}
               onChange={(e) => handleChange('gpPhone', e.target.value)}
-              placeholder="+441234567892"
+              placeholder="0241234567"
             />
           </div>
 

@@ -15,7 +15,9 @@ export type AppointmentType =
   | 'referral'
   | 'lab_review'
   | 'imaging'
-  | 'nursing_assessment';
+  | 'imaging_review'
+  | 'nursing_assessment'
+  | 'procedure';
 
 export type AppointmentStatus =
   | 'scheduled'
@@ -40,20 +42,20 @@ export class AppointmentEntity {
   @Column({ name: 'patient_id', type: 'uuid' })
   patientId: string;
 
-  @Column({ name: 'patient_chi', type: 'varchar', length: 11 })
-  patientChi: string;
+  @Column({ name: 'patient_chi', type: 'varchar', length: 11, nullable: true })
+  patientChi: string | null;
 
-  @Column({ name: 'patient_name', type: 'varchar', length: 200 })
-  patientName: string;
+  @Column({ name: 'patient_name', type: 'varchar', length: 200, nullable: true })
+  patientName: string | null;
 
-  @Column({ name: 'doctor_id', type: 'uuid' })
-  doctorId: string;
+  @Column({ name: 'doctor_id', type: 'uuid', nullable: true })
+  doctorId: string | null;
 
-  @Column({ name: 'doctor_name', type: 'varchar', length: 200 })
-  doctorName: string;
+  @Column({ name: 'doctor_name', type: 'varchar', length: 200, nullable: true })
+  doctorName: string | null;
 
-  @Column({ name: 'hospital_id', type: 'uuid' })
-  hospitalId: string;
+  @Column({ name: 'hospital_id', type: 'uuid', nullable: true })
+  hospitalId: string | null;
 
   @Column({ name: 'department_id', type: 'uuid', nullable: true })
   departmentId: string | null;

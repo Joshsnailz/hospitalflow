@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { clinicalApi } from '@/lib/api/clinical';
+import { patientsApi } from '@/lib/api/patients';
+import type { Patient } from '@/lib/types/patient';
 import type { DischargeForm, DischargeStatus } from '@/lib/types/clinical';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -108,6 +110,10 @@ export default function ClinicalDischargePage() {
     admissionDate: '',
     primaryDiagnosis: '',
   });
+  const [patientSearchResults, setPatientSearchResults] = useState<Patient[]>([]);
+  const [patientSearchLoading, setPatientSearchLoading] = useState(false);
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     fetchForms();
@@ -151,15 +157,19 @@ export default function ClinicalDischargePage() {
   };
 
   const handleCreateForm = async () => {
-    if (!newFormData.patientId || !newFormData.admissionDate || !newFormData.primaryDiagnosis) {
+    if (!newFormData.patientId || !newFormData.admissionDate || !newFormData.primaryDiagnosis.trim()) {
+      return;
+    }
+    const today = new Date().toISOString().split('T')[0];
+    if (newFormData.admissionDate > today) {
+      setError('Admission date cannot be in the future');
       return;
     }
     setIsCreating(true);
     try {
       await clinicalApi.createDischargeForm({
         patientId: newFormData.patientId,
-        admissionDate: newFormData.admissionDate,
-        primaryDiagnosis: newFormData.primaryDiagnosis,
+        dischargeDiagnosis: newFormData.primaryDiagnosis.trim(),
       });
       setNewFormDialogOpen(false);
       setNewFormData({
@@ -177,13 +187,36 @@ export default function ClinicalDischargePage() {
     }
   };
 
-  const handlePatientSearch = (value: string) => {
+  const handlePatientSearch = useCallback((value: string) => {
+    setNewFormData((prev) => ({ ...prev, patientSearch: value, patientId: '', patientName: '' }));
+    setShowPatientDropdown(true);
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    if (!value.trim()) {
+      setPatientSearchResults([]);
+      return;
+    }
+    searchTimeoutRef.current = setTimeout(async () => {
+      setPatientSearchLoading(true);
+      try {
+        const res = await patientsApi.findAll({ search: value, limit: 8 });
+        setPatientSearchResults(Array.isArray(res.data) ? res.data : []);
+      } catch {
+        setPatientSearchResults([]);
+      } finally {
+        setPatientSearchLoading(false);
+      }
+    }, 350);
+  }, []);
+
+  const selectPatient = (patient: Patient) => {
     setNewFormData((prev) => ({
       ...prev,
-      patientSearch: value,
-      patientId: value,
-      patientName: value,
+      patientSearch: `${patient.firstName} ${patient.lastName} (${patient.chiNumber})`,
+      patientId: patient.id,
+      patientName: `${patient.firstName} ${patient.lastName}`,
     }));
+    setPatientSearchResults([]);
+    setShowPatientDropdown(false);
   };
 
   if (isLoading) {
@@ -292,7 +325,7 @@ export default function ClinicalDischargePage() {
                       {form.patientName || '--'}
                     </TableCell>
                     <TableCell className="font-mono text-sm">
-                      {form.patientChiNumber || '--'}
+                      {form.patientChi || form.patientChiNumber || '--'}
                     </TableCell>
                     <TableCell>{formatDate(form.admissionDate)}</TableCell>
                     <TableCell className="max-w-[200px] truncate">
@@ -348,7 +381,7 @@ export default function ClinicalDischargePage() {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">CHI Number:</span>
-              <span className="font-mono">{selectedForm?.patientChiNumber || '--'}</span>
+              <span className="font-mono">{selectedForm?.patientChi || selectedForm?.patientChiNumber || '--'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Primary Diagnosis:</span>
@@ -382,7 +415,7 @@ export default function ClinicalDischargePage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="patient-search">Patient Search</Label>
+              <Label htmlFor="patient-search">Patient *</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -390,12 +423,32 @@ export default function ClinicalDischargePage() {
                   placeholder="Search by name or CHI number..."
                   value={newFormData.patientSearch}
                   onChange={(e) => handlePatientSearch(e.target.value)}
+                  onBlur={() => setTimeout(() => setShowPatientDropdown(false), 200)}
                   className="pl-9"
+                  autoComplete="off"
                 />
+                {patientSearchLoading && (
+                  <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+                {showPatientDropdown && patientSearchResults.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                    {patientSearchResults.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-muted flex flex-col"
+                        onMouseDown={() => selectPatient(p)}
+                      >
+                        <span className="font-medium">{p.firstName} {p.lastName}</span>
+                        <span className="text-muted-foreground">{p.chiNumber}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Enter the patient ID or search by name
-              </p>
+              {newFormData.patientId && (
+                <p className="text-xs text-green-600">Patient selected ✓</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="admission-date">Admission Date</Label>
@@ -435,7 +488,7 @@ export default function ClinicalDischargePage() {
                 isCreating ||
                 !newFormData.patientId ||
                 !newFormData.admissionDate ||
-                !newFormData.primaryDiagnosis
+                !newFormData.primaryDiagnosis.trim()
               }
             >
               {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

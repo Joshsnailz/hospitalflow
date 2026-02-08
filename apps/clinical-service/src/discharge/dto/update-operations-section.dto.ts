@@ -28,18 +28,18 @@ export class ProcedurePerformedDto {
 export class UpdateOperationsSectionDto {
   @ApiPropertyOptional({
     type: [ProcedurePerformedDto],
-    description: 'Array of procedures performed',
+    description: 'Array of operations and procedures performed',
   })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ProcedurePerformedDto)
-  proceduresPerformed?: ProcedurePerformedDto[];
+  operationsAndProcedures?: ProcedurePerformedDto[];
 
   @ApiPropertyOptional({ example: 'No complications during procedures' })
   @IsOptional()
   @IsString()
-  operationsNotes?: string;
+  surgeonNotes?: string;
 
   @ApiPropertyOptional({ example: 1, description: 'Version for optimistic locking' })
   @IsOptional()

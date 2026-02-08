@@ -204,10 +204,10 @@ export default function AuditTrailsPage() {
       if (dateTo) filters.endDate = dateTo;
 
       const response = await auditApi.getLogs(filters);
-      if (response.success && response.data) {
-        setLogs(response.data.data || []);
-        setTotal(response.data.total || 0);
-        setTotalPages(response.data.totalPages || 1);
+      if (response.success) {
+        setLogs(response.data || []);
+        setTotal(response.total || 0);
+        setTotalPages(response.totalPages || 1);
       } else {
         setLogs([]);
       }

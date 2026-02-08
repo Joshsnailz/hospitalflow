@@ -59,7 +59,15 @@ export class AppointmentsController {
   @Roles(...CLINICAL_ACCESS_ROLES)
   @ApiOperation({ summary: 'Get all appointments with pagination and filters' })
   @ApiResponse({ status: 200, description: 'Appointments retrieved successfully' })
-  async findAll(@Query() filterDto: AppointmentFilterDto) {
+  async findAll(
+    @Query() filterDto: AppointmentFilterDto,
+    @CurrentUser('id') currentUserId: string,
+    @CurrentUser('role') currentUserRole: string,
+  ) {
+    const CLINICIAN_ROLES = ['doctor', 'consultant', 'prescriber'];
+    if (CLINICIAN_ROLES.includes(currentUserRole)) {
+      filterDto.doctorId = currentUserId;
+    }
     const result = await this.appointmentsService.findAll(filterDto);
     return {
       success: true,
@@ -175,8 +183,9 @@ export class AppointmentsController {
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateAppointmentDto,
+    @CurrentUser('id') currentUserId: string,
   ) {
-    const appointment = await this.appointmentsService.update(id, dto);
+    const appointment = await this.appointmentsService.update(id, dto, currentUserId);
     return {
       success: true,
       message: 'Appointment updated successfully',
@@ -213,8 +222,9 @@ export class AppointmentsController {
   async cancel(
     @Param('id', ParseUUIDPipe) id: string,
     @Body('reason') reason?: string,
+    @CurrentUser('id') currentUserId?: string,
   ) {
-    const appointment = await this.appointmentsService.cancel(id, reason);
+    const appointment = await this.appointmentsService.cancel(id, reason, currentUserId);
     return {
       success: true,
       message: 'Appointment cancelled successfully',
@@ -232,8 +242,9 @@ export class AppointmentsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body('newDoctorId', ParseUUIDPipe) newDoctorId: string,
     @Body('reason') reason: string,
+    @CurrentUser('id') currentUserId: string,
   ) {
-    const referral = await this.appointmentsService.refer(id, newDoctorId, reason);
+    const referral = await this.appointmentsService.refer(id, newDoctorId, reason, currentUserId);
     return {
       success: true,
       message: 'Referral created successfully',

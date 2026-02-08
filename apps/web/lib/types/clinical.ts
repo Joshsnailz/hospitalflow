@@ -6,7 +6,7 @@ export interface Encounter {
   patientId: string;
   patientName?: string;
   patientChi: string;
-  doctorId: string;
+  doctorId?: string;
   doctorName?: string;
   admittingDoctorId: string;
   attendingDoctorId: string | null;
@@ -14,16 +14,22 @@ export interface Encounter {
   departmentId: string | null;
   wardId: string | null;
   bedId: string | null;
-  type: EncounterType;
+  encounterType: EncounterType;
+  /** @deprecated use encounterType */
+  type?: EncounterType;
   status: EncounterStatus;
   chiefComplaint: string | null;
-  diagnosis: string | null;
-  icdCodes: string[] | null;
-  treatmentPlan: string | null;
-  vitals: Record<string, any> | null;
+  admissionDiagnosis?: string | null;
+  dischargeDiagnosis?: string | null;
+  /** @deprecated use admissionDiagnosis/dischargeDiagnosis */
+  diagnosis?: string | null;
+  icdCodes?: string[] | null;
+  treatmentPlan?: string | null;
+  vitals?: Record<string, any> | null;
   admissionDate: string;
   dischargeDate: string | null;
-  notes: ClinicalNote[];
+  notes?: ClinicalNote[];
+  clinicalNotes?: ClinicalNote[];
   createdAt: string;
   updatedAt: string;
 }
@@ -41,23 +47,27 @@ export interface ClinicalNote {
 }
 
 export type AppointmentStatus = 'scheduled' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show' | 'rescheduled';
-export type AppointmentType = 'consultation' | 'follow_up' | 'emergency' | 'procedure' | 'lab_review' | 'imaging_review' | 'referral' | 'check_up';
+export type AppointmentType = 'consultation' | 'follow_up' | 'emergency' | 'procedure' | 'lab_review' | 'imaging' | 'imaging_review' | 'referral' | 'check_up' | 'nursing_assessment';
 
 export interface Appointment {
   id: string;
   patientId: string;
   patientName?: string;
+  patientChi?: string;
   patientChiNumber?: string;
   doctorId: string;
   doctorName?: string;
   hospitalId: string | null;
   departmentId: string | null;
   departmentName?: string;
-  type: AppointmentType;
+  appointmentType: AppointmentType;
+  /** @deprecated use appointmentType */
+  type?: AppointmentType;
   status: AppointmentStatus;
   scheduledDate: string;
-  scheduledTime: string;
-  duration: number;
+  scheduledTime?: string;
+  durationMinutes?: number;
+  duration?: number;
   reason: string | null;
   notes: string | null;
   autoAssigned: boolean;
@@ -71,12 +81,16 @@ export interface Appointment {
 
 export interface CreateAppointmentDto {
   patientId: string;
+  patientChi?: string;
+  patientName?: string;
   doctorId?: string;
+  doctorName?: string;
   hospitalId?: string;
   departmentId?: string;
-  type: AppointmentType;
+  appointmentType: AppointmentType;
   scheduledDate: string;
-  scheduledTime: string;
+  scheduledTime?: string;
+  durationMinutes?: number;
   duration?: number;
   reason?: string;
   notes?: string;
@@ -89,6 +103,7 @@ export interface DischargeForm {
   id: string;
   patientId: string;
   patientName?: string;
+  patientChi?: string;
   patientChiNumber?: string;
   encounterId: string | null;
   status: DischargeStatus;
@@ -146,6 +161,7 @@ export interface ImagingRequest {
   id: string;
   patientId: string;
   patientName?: string;
+  patientChi?: string;
   patientChiNumber?: string;
   requestedBy: string;
   requestedByName?: string;
@@ -180,6 +196,7 @@ export interface ControlledDrugEntry {
   id: string;
   patientId: string | null;
   patientName?: string;
+  patientChi?: string;
   patientChiNumber?: string;
   drugName: string;
   drugSchedule: DrugSchedule;
@@ -221,6 +238,7 @@ export interface EmergencyVisit {
   id: string;
   patientId: string;
   patientName?: string;
+  patientChi?: string;
   patientChiNumber?: string;
   encounterId: string | null;
   triageCategory: TriageCategory;
@@ -257,6 +275,7 @@ export interface CarePlan {
   id: string;
   patientId: string;
   patientName?: string;
+  patientChi?: string;
   patientChiNumber?: string;
   title: string;
   description: string | null;

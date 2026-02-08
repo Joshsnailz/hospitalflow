@@ -23,6 +23,8 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { patientsApi } from '@/lib/api/patients';
 import type { Allergy, CreateAllergyDto, AllergyType, AllergySeverity, AllergyStatus } from '@/lib/types/patient';
+import { Combobox } from '@/components/ui/combobox';
+import { ALLERGENS } from '@/lib/data/medical-terms';
 import { Plus, Edit, Trash2, Loader2, AlertTriangle } from 'lucide-react';
 
 interface AllergiesSectionProps {
@@ -228,10 +230,11 @@ export function AllergiesSection({ patientId, initialData, onCountChange }: Alle
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <Label>Allergen Name *</Label>
-              <Input
+              <Combobox
                 value={formData.allergenName}
-                onChange={(e) => setFormData({ ...formData, allergenName: e.target.value })}
-                placeholder="e.g., Penicillin, Peanuts"
+                onChange={(value) => setFormData({ ...formData, allergenName: value })}
+                items={ALLERGENS}
+                placeholder="Search or type allergen..."
               />
             </div>
             <div className="grid grid-cols-2 gap-4">

@@ -13,16 +13,27 @@ export class CreateDischargeFormDto {
   @IsNotEmpty()
   patientId: string;
 
-  @ApiProperty({ example: '70282487G70' })
+  @ApiPropertyOptional({ example: '70282487G70' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(11)
-  patientChi: string;
+  patientChi?: string;
 
-  @ApiPropertyOptional({ example: 'Acute myocardial infarction' })
+  @ApiPropertyOptional({ example: 'John Smith' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  patientName?: string;
+
+  @ApiPropertyOptional({ example: 'Acute myocardial infarction', description: 'Alias: primaryDiagnosis' })
   @IsOptional()
   @IsString()
   dischargeDiagnosis?: string;
+
+  @ApiPropertyOptional({ example: 'Acute myocardial infarction', description: 'Alias for dischargeDiagnosis' })
+  @IsOptional()
+  @IsString()
+  primaryDiagnosis?: string;
 
   @ApiPropertyOptional({ example: 'Patient admitted with chest pain...' })
   @IsOptional()

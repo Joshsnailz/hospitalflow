@@ -17,10 +17,10 @@ export class UserFilterDto {
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({ enum: Object.values(ROLES) })
+  @ApiPropertyOptional({ example: 'doctor', description: 'Single role or comma-separated roles' })
   @IsOptional()
-  @IsEnum(Object.values(ROLES))
-  role?: UserRole;
+  @IsString()
+  role?: string;
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()

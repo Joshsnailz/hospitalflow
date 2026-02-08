@@ -440,9 +440,9 @@ export default function ClinicalImagingPage() {
                   <TableRow key={req.id}>
                     <TableCell className="font-medium">
                       {req.patientName || req.patientId}
-                      {req.patientChiNumber && (
+                      {(req.patientChi || req.patientChiNumber) && (
                         <span className="block text-xs text-muted-foreground">
-                          CHI: {req.patientChiNumber}
+                          CHI: {req.patientChi || req.patientChiNumber}
                         </span>
                       )}
                     </TableCell>

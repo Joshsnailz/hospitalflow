@@ -32,13 +32,22 @@ export class AppointmentsService {
     let doctorName = dto.doctorName;
     let autoAssigned = false;
 
+    // Combine scheduledDate + scheduledTime if needed
+    let scheduledDate = dto.scheduledDate;
+    if (dto.scheduledTime && scheduledDate && !scheduledDate.includes('T')) {
+      scheduledDate = `${scheduledDate}T${dto.scheduledTime}:00.000Z`;
+    }
+
+    // Resolve durationMinutes from either field
+    const durationMinutes = dto.durationMinutes ?? dto.duration ?? 30;
+
     if (dto.autoAssign) {
       const assigned = await this.autoAssignDoctor(
         dto.patientId,
         dto.hospitalId,
         dto.departmentId,
         dto.appointmentType,
-        dto.scheduledDate,
+        scheduledDate,
       );
       if (assigned) {
         doctorId = assigned.doctorId;
@@ -49,6 +58,8 @@ export class AppointmentsService {
 
     const appointment = this.appointmentRepository.create({
       ...dto,
+      scheduledDate,
+      durationMinutes,
       doctorId,
       doctorName,
       autoAssigned,
@@ -84,10 +95,10 @@ export class AppointmentsService {
       order: { scheduledDate: 'DESC' },
     });
 
-    if (previousAppointment) {
+    if (previousAppointment?.doctorId) {
       return {
         doctorId: previousAppointment.doctorId,
-        doctorName: previousAppointment.doctorName,
+        doctorName: previousAppointment.doctorName || 'Doctor',
       };
     }
 
@@ -399,28 +410,58 @@ export class AppointmentsService {
     appointmentId: string,
     newDoctorId: string,
     reason: string,
+    userId?: string,
   ): Promise<AppointmentEntity> {
     const originalAppointment = await this.findOne(appointmentId);
+    const previousStatus = originalAppointment.status;
 
+    // Close the original appointment so it leaves the referring clinician's queue
+    originalAppointment.status = 'cancelled';
+    originalAppointment.notes = originalAppointment.notes
+      ? `${originalAppointment.notes}\nReferred to ${newDoctorId}: ${reason || 'No reason provided'}`
+      : `Referred to ${newDoctorId}: ${reason || 'No reason provided'}`;
+    await this.appointmentRepository.save(originalAppointment);
+
+    // Create the new referral appointment for the receiving clinician
     const referralAppointment = this.appointmentRepository.create({
       patientId: originalAppointment.patientId,
       patientChi: originalAppointment.patientChi,
       patientName: originalAppointment.patientName,
       doctorId: newDoctorId,
-      doctorName: 'Referred Doctor', // Will be updated by frontend
+      doctorName: 'Referred Doctor',
       hospitalId: originalAppointment.hospitalId,
       departmentId: originalAppointment.departmentId,
       appointmentType: 'referral',
       scheduledDate: new Date(),
-      durationMinutes: 30,
+      durationMinutes: originalAppointment.durationMinutes,
       priority: originalAppointment.priority,
       reason: reason,
       notes: `Referred from appointment ${appointmentId} by doctor ${originalAppointment.doctorId}`,
       referredById: originalAppointment.doctorId,
-      createdBy: originalAppointment.createdBy,
+      createdBy: userId || originalAppointment.createdBy,
     });
 
-    return this.appointmentRepository.save(referralAppointment);
+    const saved = await this.appointmentRepository.save(referralAppointment);
+
+    this.eventPublisher.publishAuditLog({
+      userId,
+      action: 'appointment.referred',
+      resource: 'appointment',
+      resourceId: saved.id,
+      status: 'success',
+      oldValues: {
+        appointmentId,
+        originalDoctorId: originalAppointment.doctorId,
+        originalStatus: previousStatus,
+      },
+      newValues: {
+        referralAppointmentId: saved.id,
+        newDoctorId,
+        reason,
+      },
+    });
+
+    return saved;
   }
 
   // ==================== Dashboard Stats ====================

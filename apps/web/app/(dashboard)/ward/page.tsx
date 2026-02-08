@@ -632,7 +632,7 @@ export default function WardViewPage() {
                 </div>
                 <div>
                   <p className="text-muted-foreground">Encounter Type</p>
-                  <p className="font-medium capitalize">{selectedEncounter.type.replace('_', ' ')}</p>
+                  <p className="font-medium capitalize">{(selectedEncounter.encounterType || selectedEncounter.type || '').replace(/_/g, ' ')}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Attending Doctor</p>

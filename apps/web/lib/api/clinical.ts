@@ -75,16 +75,16 @@ export const clinicalApi = {
   },
 
   cancelAppointment: async (id: string, reason?: string): Promise<{ success: boolean; data: Appointment }> => {
-    const response = await apiClient.post(`/appointments/${id}/cancel`, { cancellationReason: reason });
+    const response = await apiClient.post(`/appointments/${id}/cancel`, { reason });
     return response.data;
   },
 
-  rescheduleAppointment: async (id: string, data: { scheduledDate: string; scheduledTime: string; reason?: string }): Promise<{ success: boolean; data: Appointment }> => {
+  rescheduleAppointment: async (id: string, data: { newDate?: string; scheduledDate?: string; scheduledTime?: string; reason?: string }): Promise<{ success: boolean; data: Appointment }> => {
     const response = await apiClient.post(`/appointments/${id}/reschedule`, data);
     return response.data;
   },
 
-  referAppointment: async (id: string, data: { referredTo: string; departmentId?: string; reason?: string }): Promise<{ success: boolean; data: Appointment }> => {
+  referAppointment: async (id: string, data: { newDoctorId: string; reason?: string }): Promise<{ success: boolean; data: Appointment }> => {
     const response = await apiClient.post(`/appointments/${id}/refer`, data);
     return response.data;
   },

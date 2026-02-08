@@ -163,7 +163,7 @@ export function PatientDetails({ patientId }: PatientDetailsProps) {
       return {
         variant: 'blue' as const,
         icon: <BedDouble className="h-4 w-4" />,
-        text: `Currently Admitted \u2014 ${activeEncounter.type.replace('_', ' ')} \u2014 Ward ${activeEncounter.wardId || 'Unassigned'}`,
+        text: `Currently Admitted \u2014 ${(activeEncounter.encounterType || activeEncounter.type || '').replace(/_/g, ' ')} \u2014 Ward ${activeEncounter.wardId || 'Unassigned'}`,
       };
     }
 
@@ -213,14 +213,14 @@ export function PatientDetails({ patientId }: PatientDetailsProps) {
     appointments.forEach((apt) => {
       events.push({
         id: `apt-${apt.id}`,
-        date: `${apt.scheduledDate}T${apt.scheduledTime}`,
+        date: apt.scheduledDate,
         type: 'appointment',
         label: 'Appointment',
         status: apt.status,
-        summary: apt.reason || `${apt.type.replace('_', ' ')} appointment`,
+        summary: apt.reason || `${(apt.appointmentType || apt.type || '').replace(/_/g, ' ')} appointment`,
         clinician: apt.doctorName ? `Dr. ${apt.doctorName}` : undefined,
         icon: <CalendarDays className="h-4 w-4" />,
-        linkTo: `/appointments/${apt.id}`,
+        linkTo: `/appointments?patientId=${patientId}`,
       });
     });
 
@@ -231,10 +231,10 @@ export function PatientDetails({ patientId }: PatientDetailsProps) {
         type: 'encounter',
         label: 'Encounter',
         status: enc.status,
-        summary: enc.chiefComplaint || enc.diagnosis || `${enc.type.replace('_', ' ')} encounter`,
+        summary: enc.chiefComplaint || enc.admissionDiagnosis || enc.dischargeDiagnosis || `${(enc.encounterType || enc.type || '').replace(/_/g, ' ')} encounter`,
         clinician: enc.doctorName ? `Dr. ${enc.doctorName}` : undefined,
         icon: <Stethoscope className="h-4 w-4" />,
-        linkTo: `/encounters/${enc.id}`,
+        linkTo: '/ward',
       });
     });
 
@@ -248,7 +248,7 @@ export function PatientDetails({ patientId }: PatientDetailsProps) {
         summary: ev.chiefComplaint,
         clinician: ev.attendingDoctorName ? `Dr. ${ev.attendingDoctorName}` : undefined,
         icon: <Ambulance className="h-4 w-4" />,
-        linkTo: `/emergency/${ev.id}`,
+        linkTo: '/clinical/emergency',
       });
     });
 
@@ -621,17 +621,17 @@ export function PatientDetails({ patientId }: PatientDetailsProps) {
                           <Badge variant={enc.status === 'discharged' ? 'default' : enc.status === 'in_treatment' ? 'secondary' : 'outline'}>
                             {enc.status.replace('_', ' ')}
                           </Badge>
-                          <Badge variant="outline">{enc.type.replace('_', ' ')}</Badge>
+                          <Badge variant="outline">{(enc.encounterType || enc.type || '').replace(/_/g, ' ')}</Badge>
                         </div>
                         <p className="text-sm font-medium">{enc.chiefComplaint || 'No chief complaint recorded'}</p>
-                        {enc.diagnosis && <p className="text-sm text-muted-foreground">Diagnosis: {enc.diagnosis}</p>}
+                        {(enc.admissionDiagnosis || enc.dischargeDiagnosis) && <p className="text-sm text-muted-foreground">Diagnosis: {enc.admissionDiagnosis || enc.dischargeDiagnosis}</p>}
                         <p className="text-xs text-muted-foreground">
                           {new Date(enc.admissionDate).toLocaleDateString('en-GB')}
                           {enc.doctorName && ` - Dr. ${enc.doctorName}`}
                         </p>
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => router.push(`/encounters/${enc.id}`)}>
-                        View
+                      <Button variant="outline" size="sm" onClick={() => router.push(`/ward`)}>
+                        Ward View
                       </Button>
                     </div>
                   ))}
@@ -673,16 +673,16 @@ export function PatientDetails({ patientId }: PatientDetailsProps) {
                           }>
                             {apt.status}
                           </Badge>
-                          <Badge variant="outline">{apt.type.replace('_', ' ')}</Badge>
+                          <Badge variant="outline">{(apt.appointmentType || apt.type || '').replace(/_/g, ' ')}</Badge>
                         </div>
                         <p className="text-sm font-medium">
-                          {new Date(apt.scheduledDate).toLocaleDateString('en-GB')} at {apt.scheduledTime}
+                          {new Date(apt.scheduledDate).toLocaleDateString('en-GB')} at {apt.scheduledTime || new Date(apt.scheduledDate).toTimeString().slice(0, 5)}
                         </p>
                         {apt.doctorName && <p className="text-sm text-muted-foreground">With: Dr. {apt.doctorName}</p>}
                         {apt.reason && <p className="text-xs text-muted-foreground">{apt.reason}</p>}
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => router.push(`/appointments/${apt.id}`)}>
-                        View
+                      <Button variant="outline" size="sm" onClick={() => router.push(`/appointments?patientId=${patient.id}`)}>
+                        View All
                       </Button>
                     </div>
                   ))}

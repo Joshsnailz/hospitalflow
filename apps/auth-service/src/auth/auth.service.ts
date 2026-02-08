@@ -297,7 +297,14 @@ export class AuthService {
     }
 
     if (filters?.role) {
-      queryBuilder.andWhere('user.role = :role', { role: filters.role });
+      const roles = filters.role.includes(',')
+        ? filters.role.split(',').map((r) => r.trim()).filter(Boolean)
+        : [filters.role];
+      if (roles.length > 1) {
+        queryBuilder.andWhere('user.role IN (:...roles)', { roles });
+      } else {
+        queryBuilder.andWhere('user.role = :role', { role: roles[0] });
+      }
     }
 
     if (filters?.isActive !== undefined) {

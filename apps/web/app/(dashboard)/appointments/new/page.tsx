@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { isAdmin } from '@/lib/permissions';
 import { clinicalApi } from '@/lib/api/clinical';
 import { patientsApi } from '@/lib/api/patients';
 import { usersApi } from '@/lib/api/users';
@@ -47,9 +48,11 @@ const APPOINTMENT_TYPES: { value: AppointmentType; label: string }[] = [
   { value: 'emergency', label: 'Emergency' },
   { value: 'procedure', label: 'Procedure' },
   { value: 'lab_review', label: 'Lab Review' },
+  { value: 'imaging', label: 'Imaging' },
   { value: 'imaging_review', label: 'Imaging Review' },
   { value: 'referral', label: 'Referral' },
   { value: 'check_up', label: 'Check-up' },
+  { value: 'nursing_assessment', label: 'Nursing Assessment' },
 ];
 
 const DURATION_OPTIONS = [15, 20, 30, 45, 60, 90, 120];
@@ -60,7 +63,13 @@ export default function NewAppointmentPage() {
   const router = useRouter();
   const { user } = useAuth();
   const patientSearchRef = useRef<HTMLInputElement>(null);
-  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Role guard: only admins can create scheduled appointments
+  useEffect(() => {
+    if (user && !isAdmin(user.role)) {
+      router.replace('/appointments');
+    }
+  }, [user, router]);
 
   // Toast
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -74,7 +83,7 @@ export default function NewAppointmentPage() {
   const [patientResults, setPatientResults] = useState<Patient[]>([]);
   const [patientSearchLoading, setPatientSearchLoading] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
+  const [hasPatientSearched, setHasPatientSearched] = useState(false);
 
   // Doctors
   const [doctors, setDoctors] = useState<User[]>([]);
@@ -107,7 +116,8 @@ export default function NewAppointmentPage() {
     const fetchDoctors = async () => {
       try {
         setDoctorsLoading(true);
-        const response = await usersApi.findAll({ role: 'doctor', limit: 200 });
+        // Fetch all clinical roles that can be assigned appointments
+        const response = await usersApi.findAll({ role: 'doctor,consultant,prescriber', limit: 500 });
         if (response.success) {
           setDoctors(response.data);
         }
@@ -156,46 +166,35 @@ export default function NewAppointmentPage() {
     fetchDepartments();
   }, [selectedHospital]);
 
-  // Patient search with debounce
-  const searchPatients = useCallback(async (query: string) => {
-    if (query.length < 2) {
-      setPatientResults([]);
-      setShowPatientDropdown(false);
-      return;
-    }
+  // Patient search - only triggered on button click or Enter
+  const handlePatientSearch = async () => {
+    if (patientSearch.length < 2) return;
     try {
       setPatientSearchLoading(true);
-      const response = await patientsApi.findAll({ search: query, limit: 10 });
+      setHasPatientSearched(true);
+      const response = await patientsApi.findAll({ search: patientSearch, limit: 10 });
       if (response.success) {
         setPatientResults(response.data);
-        setShowPatientDropdown(true);
       }
     } catch {
       setPatientResults([]);
     } finally {
       setPatientSearchLoading(false);
     }
-  }, []);
+  };
 
   const handlePatientSearchChange = (value: string) => {
     setPatientSearch(value);
     if (selectedPatient) {
       setSelectedPatient(null);
     }
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-    searchTimeoutRef.current = setTimeout(() => {
-      searchPatients(value);
-    }, 300);
   };
 
   const selectPatient = (patient: Patient) => {
     setSelectedPatient(patient);
-    setPatientSearch(`${patient.firstName} ${patient.lastName} (${patient.chiNumber})`);
-    setShowPatientDropdown(false);
+    setPatientSearch('');
     setPatientResults([]);
-    // Clear any patient validation error
+    setHasPatientSearched(false);
     setValidationErrors((prev) => {
       const next = { ...prev };
       delete next.patient;
@@ -207,7 +206,7 @@ export default function NewAppointmentPage() {
     setSelectedPatient(null);
     setPatientSearch('');
     setPatientResults([]);
-    setShowPatientDropdown(false);
+    setHasPatientSearched(false);
     patientSearchRef.current?.focus();
   };
 
@@ -215,6 +214,7 @@ export default function NewAppointmentPage() {
 
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
+    const today = new Date().toISOString().split('T')[0];
 
     if (!selectedPatient) {
       errors.patient = 'Please select a patient';
@@ -224,9 +224,13 @@ export default function NewAppointmentPage() {
     }
     if (!scheduledDate) {
       errors.date = 'Please select a date';
+    } else if (scheduledDate < today) {
+      errors.date = 'Appointment date cannot be in the past';
     }
     if (!scheduledTime) {
       errors.time = 'Please select a time';
+    } else if (scheduledTime < '07:00' || scheduledTime > '20:00') {
+      errors.time = 'Appointment time must be between 07:00 and 20:00';
     }
     if (!autoAssign && !selectedDoctor) {
       errors.doctor = 'Please select a doctor or enable auto-assign';
@@ -243,32 +247,31 @@ export default function NewAppointmentPage() {
     try {
       setSubmitting(true);
 
-      const dto: CreateAppointmentDto = {
+      const selectedDoc = doctors.find((d) => d.id === selectedDoctor);
+      const scheduledDateTime = `${scheduledDate}T${scheduledTime}:00.000Z`;
+
+      const payload: Record<string, any> = {
         patientId: selectedPatient!.id,
-        type: appointmentType as AppointmentType,
-        scheduledDate,
-        scheduledTime,
-        duration: parseInt(duration, 10),
+        patientChi: selectedPatient!.chiNumber || '',
+        patientName: `${selectedPatient!.firstName} ${selectedPatient!.lastName}`,
+        appointmentType: appointmentType,
+        scheduledDate: scheduledDateTime,
+        durationMinutes: parseInt(duration, 10),
         autoAssign,
       };
 
       if (!autoAssign && selectedDoctor) {
-        dto.doctorId = selectedDoctor;
+        payload.doctorId = selectedDoctor;
+        if (selectedDoc) {
+          payload.doctorName = `Dr ${selectedDoc.firstName} ${selectedDoc.lastName}`;
+        }
       }
-      if (selectedHospital) {
-        dto.hospitalId = selectedHospital;
-      }
-      if (selectedDepartment) {
-        dto.departmentId = selectedDepartment;
-      }
-      if (reason.trim()) {
-        dto.reason = reason.trim();
-      }
-      if (notes.trim()) {
-        dto.notes = notes.trim();
-      }
+      if (selectedHospital) payload.hospitalId = selectedHospital;
+      if (selectedDepartment) payload.departmentId = selectedDepartment;
+      if (reason.trim()) payload.reason = reason.trim();
+      if (notes.trim()) payload.notes = notes.trim();
 
-      await clinicalApi.createAppointment(dto);
+      await clinicalApi.createAppointment(payload as any);
       showToast('success', 'Appointment created successfully');
 
       // Short delay so user sees the success message, then redirect
@@ -365,68 +368,68 @@ export default function NewAppointmentPage() {
                       </Button>
                     </div>
                   ) : (
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        ref={patientSearchRef}
-                        placeholder="Type patient name or CHI number to search..."
-                        value={patientSearch}
-                        onChange={(e) => handlePatientSearchChange(e.target.value)}
-                        onFocus={() => {
-                          if (patientResults.length > 0) setShowPatientDropdown(true);
-                        }}
-                        onBlur={() => {
-                          // Delay to allow click on dropdown item
-                          setTimeout(() => setShowPatientDropdown(false), 200);
-                        }}
-                        className="pl-9"
-                      />
-                      {patientSearchLoading && (
-                        <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-                      )}
-
-                      {/* Dropdown results */}
-                      {showPatientDropdown && patientResults.length > 0 && (
-                        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg">
-                          <div className="max-h-60 overflow-auto py-1">
-                            {patientResults.map((patient) => (
-                              <button
-                                key={patient.id}
-                                type="button"
-                                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-accent focus:bg-accent"
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  selectPatient(patient);
-                                }}
-                              >
-                                <div>
-                                  <p className="font-medium">
-                                    {patient.firstName} {patient.lastName}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    CHI: {patient.chiNumber} | DOB:{' '}
-                                    {new Date(patient.dateOfBirth).toLocaleDateString('en-GB')}
-                                  </p>
-                                </div>
-                                <Badge variant="outline" className="ml-2 capitalize text-xs">
+                    <div className="space-y-3">
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            ref={patientSearchRef}
+                            placeholder="Type patient name or CHI number..."
+                            value={patientSearch}
+                            onChange={(e) => handlePatientSearchChange(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handlePatientSearch();
+                            }}
+                            className="pl-9"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={handlePatientSearch}
+                          disabled={patientSearch.length < 2 || patientSearchLoading}
+                        >
+                          {patientSearchLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Search className="h-4 w-4" />
+                          )}
+                          <span className="ml-1">Search</span>
+                        </Button>
+                      </div>
+                      {patientResults.length > 0 && (
+                        <div className="space-y-2">
+                          {patientResults.map((patient) => (
+                            <div
+                              key={patient.id}
+                              className="flex items-center justify-between rounded-lg border p-3 hover:bg-accent transition-colors"
+                            >
+                              <div>
+                                <p className="font-medium">
+                                  {patient.firstName} {patient.lastName}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  CHI: {patient.chiNumber} | DOB:{' '}
+                                  {new Date(patient.dateOfBirth).toLocaleDateString('en-GB')}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="capitalize text-xs">
                                   {patient.gender}
                                 </Badge>
-                              </button>
-                            ))}
-                          </div>
+                                <Button type="button" size="sm" onClick={() => selectPatient(patient)}>
+                                  Select
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
-
-                      {showPatientDropdown &&
-                        !patientSearchLoading &&
-                        patientSearch.length >= 2 &&
-                        patientResults.length === 0 && (
-                          <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-3 shadow-lg">
-                            <p className="text-sm text-muted-foreground text-center">
-                              No patients found for &quot;{patientSearch}&quot;
-                            </p>
-                          </div>
-                        )}
+                      {!patientSearchLoading && hasPatientSearched && patientResults.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-3">
+                          No patients found for &quot;{patientSearch}&quot;
+                        </p>
+                      )}
                     </div>
                   )}
                   {validationErrors.patient && (
@@ -499,6 +502,7 @@ export default function NewAppointmentPage() {
                     <Input
                       id="date"
                       type="date"
+                      min={new Date().toISOString().split('T')[0]}
                       value={scheduledDate}
                       onChange={(e) => {
                         setScheduledDate(e.target.value);
@@ -519,6 +523,8 @@ export default function NewAppointmentPage() {
                     <Input
                       id="time"
                       type="time"
+                      min="07:00"
+                      max="20:00"
                       value={scheduledTime}
                       onChange={(e) => {
                         setScheduledTime(e.target.value);
@@ -588,11 +594,11 @@ export default function NewAppointmentPage() {
               <CardContent>
                 <div className="space-y-4">
                   {/* Auto-assign toggle */}
-                  <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="flex items-center justify-between rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
                     <div>
-                      <p className="text-sm font-medium">Auto-assign Doctor</p>
-                      <p className="text-xs text-muted-foreground">
-                        System will assign the best available doctor
+                      <p className="text-sm font-semibold">Auto-assign Doctor</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Uses round-robin load balancing to distribute among available clinicians
                       </p>
                     </div>
                     <button
@@ -643,7 +649,9 @@ export default function NewAppointmentPage() {
                           {doctors.map((doc) => (
                             <SelectItem key={doc.id} value={doc.id}>
                               Dr {doc.firstName} {doc.lastName}
-                              {doc.department ? ` - ${doc.department}` : ''}
+                              {doc.role && doc.role !== 'doctor'
+                                ? ` (${doc.role.charAt(0).toUpperCase() + doc.role.slice(1)})`
+                                : ''}
                             </SelectItem>
                           ))}
                         </SelectContent>

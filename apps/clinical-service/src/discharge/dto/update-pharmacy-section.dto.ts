@@ -31,18 +31,18 @@ export class DischargeMedicationDto {
 export class UpdatePharmacySectionDto {
   @ApiPropertyOptional({
     type: [DischargeMedicationDto],
-    description: 'Array of discharge medications',
+    description: 'Array of medications on discharge',
   })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => DischargeMedicationDto)
-  dischargeMedications?: DischargeMedicationDto[];
+  medicationsOnDischarge?: DischargeMedicationDto[];
 
   @ApiPropertyOptional({ example: 'All medications reconciled with home medications' })
   @IsOptional()
   @IsString()
-  medicationReconciliationNotes?: string;
+  pharmacyNotes?: string;
 
   @ApiPropertyOptional({ example: 1, description: 'Version for optimistic locking' })
   @IsOptional()

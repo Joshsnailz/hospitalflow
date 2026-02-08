@@ -50,16 +50,44 @@ export class PatientsService {
 
   // ==================== Patient CRUD ====================
 
+  /** Generate a random valid CHI number (format: [1-9]\d{7}[A-NP-TV-Z]\d{2}) */
+  private generateEmergencyChi(): string {
+    const validLetters = 'ABCDEFGHIJKLMNPQRSTWXYZ';
+    const d1 = (Math.floor(Math.random() * 9) + 1).toString();
+    const d2to8 = Array.from({ length: 7 }, () => Math.floor(Math.random() * 10)).join('');
+    const letter = validLetters[Math.floor(Math.random() * validLetters.length)];
+    const lastTwo = Math.floor(Math.random() * 100).toString().padStart(2, '0');
+    return `${d1}${d2to8}${letter}${lastTwo}`;
+  }
+
+  private async generateUniqueChi(): Promise<string> {
+    for (let i = 0; i < 10; i++) {
+      const chi = this.generateEmergencyChi();
+      const existing = await this.patientRepository.findOne({ where: { chiNumber: chi } });
+      if (!existing) return chi;
+    }
+    throw new BadRequestException('Failed to generate a unique emergency CHI number — please try again');
+  }
+
   async create(createPatientDto: CreatePatientDto, createdById?: string): Promise<PatientEntity> {
-    const chiValidation = validateChiNumber(createPatientDto.chiNumber);
-    if (!chiValidation.isValid) {
-      throw new BadRequestException({
-        message: 'Invalid CHI number format',
-        errors: chiValidation.errors,
-      });
+    let chiToUse = createPatientDto.chiNumber;
+
+    if (!chiToUse) {
+      if (!createPatientDto.isEmergency) {
+        throw new BadRequestException('CHI number is required for non-emergency patients');
+      }
+      chiToUse = await this.generateUniqueChi();
+    } else {
+      const chiValidation = validateChiNumber(chiToUse);
+      if (!chiValidation.isValid) {
+        throw new BadRequestException({
+          message: 'Invalid CHI number format',
+          errors: chiValidation.errors,
+        });
+      }
     }
 
-    const normalizedChi = normalizeChiNumber(createPatientDto.chiNumber);
+    const normalizedChi = normalizeChiNumber(chiToUse);
 
     const existingPatient = await this.patientRepository.findOne({
       where: { chiNumber: normalizedChi },

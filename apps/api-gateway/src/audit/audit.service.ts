@@ -66,4 +66,27 @@ export class AuditService {
     );
     return data;
   }
+
+  async createLog(payload: {
+    userId?: string;
+    userEmail?: string;
+    userRole?: string;
+    action: string;
+    resource?: string;
+    resourceId?: string;
+    status?: string;
+    ipAddress?: string;
+    userAgent?: string;
+    description?: string;
+    requestId?: string;
+    serviceName?: string;
+  }): Promise<void> {
+    try {
+      await firstValueFrom(
+        this.httpService.post('/audit/logs', payload),
+      );
+    } catch {
+      this.logger.warn('Failed to write audit log', payload.action);
+    }
+  }
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { isAdmin } from '@/lib/permissions';
 import { clinicalApi } from '@/lib/api/clinical';
 import { hospitalsApi } from '@/lib/api/hospitals';
 import { usersApi } from '@/lib/api/users';
@@ -76,9 +77,11 @@ const TYPE_LABELS: Record<AppointmentType, string> = {
   emergency: 'Emergency',
   procedure: 'Procedure',
   lab_review: 'Lab Review',
+  imaging: 'Imaging',
   imaging_review: 'Imaging Review',
   referral: 'Referral',
   check_up: 'Check-up',
+  nursing_assessment: 'Nursing Assessment',
 };
 
 type SortField = 'scheduledDate' | 'patientName' | 'doctorName' | 'type' | 'status';
@@ -112,9 +115,14 @@ function formatTime(timeStr: string): string {
 
 // -- component ----------------------------------------------------------------
 
+const CLINICIAN_ROLES = ['doctor', 'consultant', 'prescriber'];
+
 export default function AppointmentsPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const userRole = user?.role ?? '';
+  const isClinician = CLINICIAN_ROLES.includes(userRole);
+  const isAdminUser = isAdmin(userRole);
 
   // Data
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -161,6 +169,9 @@ export default function AppointmentsPage() {
   // Check-in loading state (per-appointment)
   const [checkInLoadingId, setCheckInLoadingId] = useState<string | null>(null);
 
+  // Accept loading state (per-appointment)
+  const [acceptLoadingId, setAcceptLoadingId] = useState<string | null>(null);
+
   // Complete appointment dialog
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [completeLoading, setCompleteLoading] = useState(false);
@@ -199,7 +210,7 @@ export default function AppointmentsPage() {
       setError(null);
       const params: Record<string, any> = {};
       if (statusFilter !== 'all') params.status = statusFilter;
-      if (typeFilter !== 'all') params.type = typeFilter;
+      if (typeFilter !== 'all') params.appointmentType = typeFilter;
       if (doctorFilter !== 'all') params.doctorId = doctorFilter;
       if (dateFrom) params.dateFrom = dateFrom;
       if (dateTo) params.dateTo = dateTo;
@@ -240,7 +251,7 @@ export default function AppointmentsPage() {
       const q = searchQuery.toLowerCase();
       return (
         (apt.patientName?.toLowerCase() || '').includes(q) ||
-        (apt.patientChiNumber?.toLowerCase() || '').includes(q) ||
+        (apt.patientChi?.toLowerCase() || '').includes(q) ||
         (apt.doctorName?.toLowerCase() || '').includes(q) ||
         (apt.reason?.toLowerCase() || '').includes(q)
       );
@@ -249,7 +260,7 @@ export default function AppointmentsPage() {
       let cmp = 0;
       switch (sortField) {
         case 'scheduledDate':
-          cmp = `${a.scheduledDate}T${a.scheduledTime}`.localeCompare(`${b.scheduledDate}T${b.scheduledTime}`);
+          cmp = a.scheduledDate.localeCompare(b.scheduledDate);
           break;
         case 'patientName':
           cmp = (a.patientName || '').localeCompare(b.patientName || '');
@@ -258,7 +269,7 @@ export default function AppointmentsPage() {
           cmp = (a.doctorName || '').localeCompare(b.doctorName || '');
           break;
         case 'type':
-          cmp = a.type.localeCompare(b.type);
+          cmp = (a.appointmentType || a.type || '').localeCompare(b.appointmentType || b.type || '');
           break;
         case 'status':
           cmp = a.status.localeCompare(b.status);
@@ -295,8 +306,12 @@ export default function AppointmentsPage() {
 
   const openRescheduleDialog = (apt: Appointment) => {
     setSelectedAppointment(apt);
-    setRescheduleDate(apt.scheduledDate);
-    setRescheduleTime(apt.scheduledTime);
+    // Parse the ISO datetime to extract date and time parts
+    const d = new Date(apt.scheduledDate);
+    const datePart = d.toISOString().split('T')[0];
+    const timePart = apt.scheduledTime || d.toTimeString().slice(0, 5);
+    setRescheduleDate(datePart);
+    setRescheduleTime(timePart);
     setRescheduleReason('');
     setRescheduleDialogOpen(true);
   };
@@ -320,8 +335,7 @@ export default function AppointmentsPage() {
     try {
       setRescheduleLoading(true);
       await clinicalApi.rescheduleAppointment(selectedAppointment.id, {
-        scheduledDate: rescheduleDate,
-        scheduledTime: rescheduleTime,
+        newDate: `${rescheduleDate}T${rescheduleTime}:00.000Z`,
         reason: rescheduleReason || undefined,
       });
       showToast('success', 'Appointment rescheduled successfully');
@@ -354,8 +368,7 @@ export default function AppointmentsPage() {
     try {
       setReferLoading(true);
       await clinicalApi.referAppointment(selectedAppointment.id, {
-        referredTo: referDoctor,
-        departmentId: referDepartment || undefined,
+        newDoctorId: referDoctor,
         reason: referReason || undefined,
       });
       showToast('success', 'Appointment referred successfully');
@@ -380,6 +393,19 @@ export default function AppointmentsPage() {
       showToast('error', err?.response?.data?.message || 'Failed to check in appointment');
     } finally {
       setCheckInLoadingId(null);
+    }
+  };
+
+  const handleAccept = async (apt: Appointment) => {
+    try {
+      setAcceptLoadingId(apt.id);
+      await clinicalApi.updateAppointment(apt.id, { status: 'confirmed' });
+      showToast('success', `Appointment accepted for ${apt.patientName || 'patient'}`);
+      fetchAppointments();
+    } catch (err: any) {
+      showToast('error', err?.response?.data?.message || 'Failed to accept appointment');
+    } finally {
+      setAcceptLoadingId(null);
     }
   };
 
@@ -543,15 +569,21 @@ export default function AppointmentsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Appointments</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {isClinician ? 'My Queue' : 'Appointments'}
+          </h1>
           <p className="text-muted-foreground">
-            Manage and track patient appointments across departments
+            {isClinician
+              ? 'Your assigned patient appointments'
+              : 'Manage and track patient appointments across departments'}
           </p>
         </div>
-        <Button onClick={() => router.push('/appointments/new')} className="gap-2">
-          <Plus className="h-4 w-4" />
-          New Appointment
-        </Button>
+        {isAdminUser && (
+          <Button onClick={() => router.push('/appointments/new')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Appointment
+          </Button>
+        )}
       </div>
 
       {/* Summary cards */}
@@ -679,22 +711,24 @@ export default function AppointmentsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Doctor</Label>
-                  <Select value={doctorFilter} onValueChange={setDoctorFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All doctors" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Doctors</SelectItem>
-                      {doctors.map((doc) => (
-                        <SelectItem key={doc.id} value={doc.id}>
-                          Dr {doc.firstName} {doc.lastName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {!isClinician && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Doctor</Label>
+                    <Select value={doctorFilter} onValueChange={setDoctorFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All doctors" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Doctors</SelectItem>
+                        {doctors.map((doc) => (
+                          <SelectItem key={doc.id} value={doc.id}>
+                            Dr {doc.firstName} {doc.lastName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="space-y-1.5">
                   <Label className="text-xs">From Date</Label>
                   <Input
@@ -749,7 +783,7 @@ export default function AppointmentsPage() {
                   ? 'Try adjusting your filters or search query.'
                   : 'Create a new appointment to get started.'}
               </p>
-              {!hasActiveFilters && !searchQuery && (
+              {!hasActiveFilters && !searchQuery && isAdminUser && (
                 <Button
                   className="mt-4 gap-2"
                   onClick={() => router.push('/appointments/new')}
@@ -812,21 +846,25 @@ export default function AppointmentsPage() {
                         {apt.patientName || 'Unknown Patient'}
                       </TableCell>
                       <TableCell className="font-mono text-xs">
-                        {apt.patientChiNumber || '-'}
+                        {apt.patientChi || apt.patientChiNumber || '-'}
                       </TableCell>
                       <TableCell>{apt.doctorName ? `Dr ${apt.doctorName}` : '-'}</TableCell>
-                      <TableCell>{TYPE_LABELS[apt.type] || apt.type}</TableCell>
+                      <TableCell>{TYPE_LABELS[apt.appointmentType || apt.type!] || apt.appointmentType || apt.type}</TableCell>
                       <TableCell>
                         <div className="flex flex-col">
                           <span className="text-sm">{formatDate(apt.scheduledDate)}</span>
                           <span className="text-xs text-muted-foreground">
-                            {formatTime(apt.scheduledTime)}
-                            {apt.duration ? ` (${apt.duration} min)` : ''}
+                            {apt.scheduledTime
+                              ? formatTime(apt.scheduledTime)
+                              : formatTime(new Date(apt.scheduledDate).toTimeString().slice(0, 5))}
+                            {apt.durationMinutes ? ` (${apt.durationMinutes} min)` : apt.duration ? ` (${apt.duration} min)` : ''}
                           </span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+                        <Badge variant={statusInfo.variant}>
+                          {isClinician && apt.status === 'scheduled' ? 'Pending Accept' : statusInfo.label}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -839,6 +877,23 @@ export default function AppointmentsPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
+                          {isClinician && apt.status === 'scheduled' && apt.doctorId === user?.id && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 p-0 px-2 text-blue-600 hover:text-blue-700 gap-1"
+                              title="Accept"
+                              disabled={acceptLoadingId === apt.id}
+                              onClick={() => handleAccept(apt)}
+                            >
+                              {acceptLoadingId === apt.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <CheckCircle className="h-4 w-4" />
+                              )}
+                              <span className="text-xs">Accept</span>
+                            </Button>
+                          )}
                           {(apt.status === 'scheduled' || apt.status === 'confirmed') && (
                             <Button
                               variant="ghost"
@@ -870,14 +925,26 @@ export default function AppointmentsPage() {
                           )}
                           {isCancellable && (
                             <>
+                              {!isClinician && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  title="Reschedule"
+                                  onClick={() => openRescheduleDialog(apt)}
+                                >
+                                  <CalendarClock className="h-4 w-4" />
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0"
-                                title="Reschedule"
-                                onClick={() => openRescheduleDialog(apt)}
+                                className={isClinician ? 'h-8 p-0 px-2 text-orange-600 hover:text-orange-700 gap-1' : 'h-8 w-8 p-0'}
+                                title="Refer to colleague"
+                                onClick={() => openReferDialog(apt)}
                               >
-                                <CalendarClock className="h-4 w-4" />
+                                <ArrowRightLeft className="h-4 w-4" />
+                                {isClinician && <span className="text-xs">Refer</span>}
                               </Button>
                               <Button
                                 variant="ghost"
@@ -887,15 +954,6 @@ export default function AppointmentsPage() {
                                 onClick={() => openCancelDialog(apt)}
                               >
                                 <XCircle className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                title="Refer"
-                                onClick={() => openReferDialog(apt)}
-                              >
-                                <ArrowRightLeft className="h-4 w-4" />
                               </Button>
                             </>
                           )}
@@ -929,7 +987,7 @@ export default function AppointmentsPage() {
                 <div>
                   <p className="text-muted-foreground">CHI Number</p>
                   <p className="font-medium font-mono">
-                    {selectedAppointment.patientChiNumber || '-'}
+                    {selectedAppointment.patientChi || selectedAppointment.patientChiNumber || '-'}
                   </p>
                 </div>
                 <div>
@@ -947,7 +1005,7 @@ export default function AppointmentsPage() {
                 <div>
                   <p className="text-muted-foreground">Type</p>
                   <p className="font-medium">
-                    {TYPE_LABELS[selectedAppointment.type] || selectedAppointment.type}
+                    {TYPE_LABELS[selectedAppointment.appointmentType || selectedAppointment.type!] || selectedAppointment.appointmentType || selectedAppointment.type}
                   </p>
                 </div>
                 <div>
@@ -963,8 +1021,14 @@ export default function AppointmentsPage() {
                 <div>
                   <p className="text-muted-foreground">Time</p>
                   <p className="font-medium">
-                    {formatTime(selectedAppointment.scheduledTime)}
-                    {selectedAppointment.duration ? ` (${selectedAppointment.duration} min)` : ''}
+                    {selectedAppointment.scheduledTime
+                      ? formatTime(selectedAppointment.scheduledTime)
+                      : formatTime(new Date(selectedAppointment.scheduledDate).toTimeString().slice(0, 5))}
+                    {selectedAppointment.durationMinutes
+                      ? ` (${selectedAppointment.durationMinutes} min)`
+                      : selectedAppointment.duration
+                      ? ` (${selectedAppointment.duration} min)`
+                      : ''}
                   </p>
                 </div>
                 {selectedAppointment.autoAssigned && (
@@ -1113,10 +1177,11 @@ export default function AppointmentsPage() {
       <Dialog open={referDialogOpen} onOpenChange={setReferDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Refer Appointment</DialogTitle>
+            <DialogTitle>Refer to Colleague</DialogTitle>
             <DialogDescription>
-              Refer {selectedAppointment?.patientName || 'this patient'}&apos;s appointment to
-              another doctor or department.
+              Transfer {selectedAppointment?.patientName || 'this patient'}&apos;s appointment to
+              another clinician. The original appointment will be closed and a new referral
+              appointment will be created for the selected clinician.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

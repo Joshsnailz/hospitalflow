@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Combobox } from '@/components/ui/combobox';
+import { MEDICATIONS } from '@/lib/data/medical-terms';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
@@ -389,7 +391,7 @@ export default function DischargeDetailPage({ params }: DischargeDetailPageProps
             </div>
             <div>
               <p className="text-sm text-muted-foreground">CHI Number</p>
-              <p className="font-mono font-semibold">{form.patientChiNumber || '--'}</p>
+              <p className="font-mono font-semibold">{form.patientChi || form.patientChiNumber || '--'}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Admission Date</p>
@@ -539,10 +541,11 @@ export default function DischargeDetailPage({ params }: DischargeDetailPageProps
                     {medications.map((med, index) => (
                       <TableRow key={index}>
                         <TableCell>
-                          <Input
-                            placeholder="Name"
+                          <Combobox
                             value={med.name}
-                            onChange={(e) => handleMedicationChange(index, 'name', e.target.value)}
+                            onChange={(value) => handleMedicationChange(index, 'name', value)}
+                            items={MEDICATIONS}
+                            placeholder="Search medication..."
                           />
                         </TableCell>
                         <TableCell>
@@ -934,7 +937,7 @@ export default function DischargeDetailPage({ params }: DischargeDetailPageProps
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">CHI Number:</span>
-              <span className="font-mono">{form.patientChiNumber || '--'}</span>
+              <span className="font-mono">{form.patientChi || form.patientChiNumber || '--'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Primary Diagnosis:</span>

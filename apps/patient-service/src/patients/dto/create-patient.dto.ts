@@ -3,6 +3,7 @@ import {
   IsString,
   IsNotEmpty,
   IsOptional,
+  IsBoolean,
   IsEmail,
   IsEnum,
   IsDateString,
@@ -13,10 +14,21 @@ import { IsChiNumber } from '../../common/validators/chi-number.validator';
 import { Gender, MaritalStatus } from '../entities/patient.entity';
 
 export class CreatePatientDto {
-  @ApiProperty({ example: '70282487G70', description: 'CHI Number (11 characters)' })
+  @ApiPropertyOptional({
+    example: '70282487G70',
+    description: 'CHI Number (11 characters). Omit for A&E emergency patients — a temporary number will be auto-generated.',
+  })
+  @IsOptional()
   @IsChiNumber()
-  @IsNotEmpty()
-  chiNumber: string;
+  chiNumber?: string;
+
+  @ApiPropertyOptional({
+    default: false,
+    description: 'Set to true for A&E emergency patients to auto-generate a temporary CHI number.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isEmergency?: boolean;
 
   @ApiProperty({ example: 'John' })
   @IsString()

@@ -282,7 +282,7 @@ export default function PharmacyDischargePage() {
                       {form.patientName || '--'}
                     </TableCell>
                     <TableCell className="font-mono text-sm">
-                      {form.patientChiNumber || '--'}
+                      {form.patientChi || form.patientChiNumber || '--'}
                     </TableCell>
                     <TableCell>
                       {form.medicationsOnDischarge && form.medicationsOnDischarge.length > 0 ? (
@@ -342,8 +342,8 @@ export default function PharmacyDischargePage() {
             <DialogDescription>
               Review and update discharge medications for{' '}
               <span className="font-semibold">{selectedForm?.patientName}</span>
-              {selectedForm?.patientChiNumber && (
-                <> (CHI: <span className="font-mono">{selectedForm.patientChiNumber}</span>)</>
+              {(selectedForm?.patientChi || selectedForm?.patientChiNumber) && (
+                <> (CHI: <span className="font-mono">{selectedForm.patientChi || selectedForm.patientChiNumber}</span>)</>
               )}
             </DialogDescription>
           </DialogHeader>

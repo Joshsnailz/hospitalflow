@@ -13,35 +13,38 @@ import { EncounterEntity } from '../../encounters/entities/encounter.entity';
 export type DischargeFormStatus = 'active' | 'completed' | 'cancelled';
 
 @Entity('discharge_forms')
-@Index(['encounterId'], { unique: true })
+@Index(['encounterId'])
 @Index(['patientId'])
 @Index(['status'])
 export class DischargeFormEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'encounter_id', type: 'uuid', unique: true })
-  encounterId: string;
+  @Column({ name: 'encounter_id', type: 'uuid', nullable: true })
+  encounterId: string | null;
 
   @Column({ name: 'patient_id', type: 'uuid' })
   patientId: string;
 
-  @Column({ name: 'patient_chi', type: 'varchar', length: 11 })
-  patientChi: string;
+  @Column({ name: 'patient_chi', type: 'varchar', length: 11, nullable: true })
+  patientChi: string | null;
+
+  @Column({ name: 'patient_name', type: 'varchar', length: 200, nullable: true })
+  patientName: string | null;
 
   @Column({ type: 'varchar', length: 30, default: 'active' })
   status: DischargeFormStatus;
 
-  // Vitals/Metrics section
-  @Column({ type: 'jsonb', nullable: true })
-  vitals: {
-    temperature?: number;
-    bloodPressure?: string;
-    heartRate?: number;
-    respiratoryRate?: number;
-    oxygenSaturation?: number;
-    weight?: number;
-    height?: number;
+  // Vitals on discharge section
+  @Column({ name: 'vitals', type: 'jsonb', nullable: true })
+  vitalSignsOnDischarge: {
+    bp?: string;
+    hr?: string;
+    temp?: string;
+    spo2?: string;
+    rr?: string;
+    weight?: string;
+    height?: string;
   } | null;
 
   @Column({ name: 'vitals_recorded_by', type: 'uuid', nullable: true })
@@ -52,22 +55,19 @@ export class DischargeFormEntity {
 
   // Clinical section
   @Column({ name: 'discharge_diagnosis', type: 'text', nullable: true })
-  dischargeDiagnosis: string | null;
+  primaryDiagnosis: string | null;
+
+  @Column({ name: 'secondary_diagnoses', type: 'jsonb', nullable: true })
+  secondaryDiagnoses: string[] | null;
 
   @Column({ name: 'clinical_summary', type: 'text', nullable: true })
   clinicalSummary: string | null;
 
   @Column({ name: 'treatment_plan', type: 'text', nullable: true })
-  treatmentPlan: string | null;
+  treatmentProvided: string | null;
 
   @Column({ name: 'discharge_type', type: 'varchar', length: 50, nullable: true })
   dischargeType: string | null;
-
-  @Column({ name: 'follow_up_instructions', type: 'text', nullable: true })
-  followUpInstructions: string | null;
-
-  @Column({ name: 'follow_up_date', type: 'date', nullable: true })
-  followUpDate: Date | null;
 
   @Column({ name: 'clinical_completed_by', type: 'uuid', nullable: true })
   clinicalCompletedBy: string | null;
@@ -77,7 +77,7 @@ export class DischargeFormEntity {
 
   // Pharmacy section
   @Column({ name: 'discharge_medications', type: 'jsonb', nullable: true })
-  dischargeMedications: Array<{
+  medicationsOnDischarge: Array<{
     name: string;
     dosage: string;
     frequency: string;
@@ -87,7 +87,7 @@ export class DischargeFormEntity {
   }> | null;
 
   @Column({ name: 'medication_reconciliation_notes', type: 'text', nullable: true })
-  medicationReconciliationNotes: string | null;
+  pharmacyNotes: string | null;
 
   @Column({ name: 'pharmacy_completed_by', type: 'uuid', nullable: true })
   pharmacyCompletedBy: string | null;
@@ -97,7 +97,7 @@ export class DischargeFormEntity {
 
   // Operations/Procedures section
   @Column({ name: 'procedures_performed', type: 'jsonb', nullable: true })
-  proceduresPerformed: Array<{
+  operationsAndProcedures: Array<{
     name: string;
     date: string;
     surgeon: string;
@@ -106,7 +106,7 @@ export class DischargeFormEntity {
   }> | null;
 
   @Column({ name: 'operations_notes', type: 'text', nullable: true })
-  operationsNotes: string | null;
+  surgeonNotes: string | null;
 
   @Column({ name: 'operations_completed_by', type: 'uuid', nullable: true })
   operationsCompletedBy: string | null;
@@ -121,11 +121,30 @@ export class DischargeFormEntity {
   @Column({ name: 'nursing_assessment', type: 'text', nullable: true })
   nursingAssessment: string | null;
 
+  @Column({ name: 'dietary_instructions', type: 'text', nullable: true })
+  dietaryInstructions: string | null;
+
+  @Column({ name: 'activity_restrictions', type: 'text', nullable: true })
+  activityRestrictions: string | null;
+
   @Column({ name: 'nursing_completed_by', type: 'uuid', nullable: true })
   nursingCompletedBy: string | null;
 
   @Column({ name: 'nursing_completed_at', type: 'timestamp', nullable: true })
   nursingCompletedAt: Date | null;
+
+  // Follow-up section
+  @Column({ name: 'follow_up_instructions', type: 'text', nullable: true })
+  followUpInstructions: string | null;
+
+  @Column({ name: 'follow_up_date', type: 'date', nullable: true })
+  followUpDate: Date | null;
+
+  @Column({ name: 'follow_up_doctor', type: 'varchar', length: 200, nullable: true })
+  followUpDoctor: string | null;
+
+  @Column({ name: 'patient_education', type: 'text', nullable: true })
+  patientEducation: string | null;
 
   // Final discharge
   @Column({ name: 'discharged_by', type: 'uuid', nullable: true })
@@ -136,6 +155,9 @@ export class DischargeFormEntity {
 
   @Column({ name: 'last_updated_by', type: 'uuid', nullable: true })
   lastUpdatedBy: string | null;
+
+  @Column({ name: 'last_updated_section', type: 'varchar', length: 50, nullable: true })
+  lastUpdatedSection: string | null;
 
   // Optimistic locking
   @Column({ type: 'int', default: 1 })

@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
+import { Repository, ILike, In } from 'typeorm';
 import { UserEntity, UserRole } from './entities/user.entity';
 import { CreateUserDto, UpdateUserDto, UpdateRoleDto, UserFilterDto } from './dto';
 import { ROLES, ROLE_HIERARCHY } from '../config/roles.config';
@@ -58,7 +58,12 @@ export class UsersService {
     }
 
     if (role) {
-      queryBuilder.andWhere('user.role = :role', { role });
+      const roles = role.split(',').map((r) => r.trim()).filter(Boolean);
+      if (roles.length === 1) {
+        queryBuilder.andWhere('user.role = :role', { role: roles[0] });
+      } else if (roles.length > 1) {
+        queryBuilder.andWhere('user.role IN (:...roles)', { roles });
+      }
     }
 
     if (isActive !== undefined) {

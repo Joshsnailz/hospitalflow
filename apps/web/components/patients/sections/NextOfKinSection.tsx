@@ -274,9 +274,12 @@ export function NextOfKinSection({ patientId, initialData, onCountChange }: Next
               <div className="space-y-2">
                 <Label>Primary Phone *</Label>
                 <Input
+                  type="tel"
+                  pattern="^(\+263|0)\d{9}$"
+                  title="Enter a valid Zimbabwean phone number (e.g. 0771234567 or +263771234567)"
                   value={formData.phonePrimary}
                   onChange={(e) => setFormData({ ...formData, phonePrimary: e.target.value })}
-                  placeholder="+441234567890"
+                  placeholder="0771234567"
                 />
               </div>
             </div>

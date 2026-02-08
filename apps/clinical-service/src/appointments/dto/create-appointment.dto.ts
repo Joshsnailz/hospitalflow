@@ -13,49 +13,60 @@ import {
 } from 'class-validator';
 import { AppointmentType, AppointmentPriority } from '../entities/appointment.entity';
 
+const APPOINTMENT_TYPES = [
+  'consultation',
+  'follow_up',
+  'check_up',
+  'emergency',
+  'referral',
+  'lab_review',
+  'imaging',
+  'imaging_review',
+  'nursing_assessment',
+  'procedure',
+];
+
 export class CreateAppointmentDto {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
   @IsUUID()
   @IsNotEmpty()
   patientId: string;
 
-  @ApiProperty({ example: '70282487G70' })
+  @ApiPropertyOptional({ example: '70282487G70' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(11)
-  patientChi: string;
+  patientChi?: string;
 
-  @ApiProperty({ example: 'John Doe' })
+  @ApiPropertyOptional({ example: 'John Doe' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(200)
-  patientName: string;
+  patientName?: string;
 
-  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440001' })
+  @ApiPropertyOptional({ example: '550e8400-e29b-41d4-a716-446655440001' })
+  @IsOptional()
   @IsUUID()
-  @IsNotEmpty()
-  doctorId: string;
+  doctorId?: string;
 
-  @ApiProperty({ example: 'Dr. Jane Smith' })
+  @ApiPropertyOptional({ example: 'Dr. Jane Smith' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(200)
-  doctorName: string;
+  doctorName?: string;
 
-  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440002' })
+  @ApiPropertyOptional({ example: '550e8400-e29b-41d4-a716-446655440002' })
+  @IsOptional()
   @IsUUID()
-  @IsNotEmpty()
-  hospitalId: string;
+  hospitalId?: string;
 
   @ApiPropertyOptional({ example: '550e8400-e29b-41d4-a716-446655440003' })
   @IsOptional()
   @IsUUID()
   departmentId?: string;
 
-  @ApiProperty({
-    enum: ['consultation', 'follow_up', 'check_up', 'emergency', 'referral', 'lab_review', 'imaging', 'nursing_assessment'],
-  })
-  @IsEnum(['consultation', 'follow_up', 'check_up', 'emergency', 'referral', 'lab_review', 'imaging', 'nursing_assessment'])
+  @ApiProperty({ enum: APPOINTMENT_TYPES })
+  @IsEnum(APPOINTMENT_TYPES)
   @IsNotEmpty()
   appointmentType: AppointmentType;
 
@@ -63,6 +74,11 @@ export class CreateAppointmentDto {
   @IsDateString()
   @IsNotEmpty()
   scheduledDate: string;
+
+  @ApiPropertyOptional({ example: '10:30', description: 'HH:mm time when scheduledDate is date-only' })
+  @IsOptional()
+  @IsString()
+  scheduledTime?: string;
 
   @ApiPropertyOptional({ example: '2024-01-20T10:30:00Z' })
   @IsOptional()
@@ -74,6 +90,12 @@ export class CreateAppointmentDto {
   @IsInt()
   @Min(1)
   durationMinutes?: number;
+
+  @ApiPropertyOptional({ example: 30, description: 'Alias for durationMinutes' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  duration?: number;
 
   @ApiPropertyOptional({ enum: ['urgent', 'high', 'normal', 'low'], default: 'normal' })
   @IsOptional()
@@ -95,7 +117,7 @@ export class CreateAppointmentDto {
   @IsUUID()
   referredById?: string;
 
-  @ApiPropertyOptional({ example: false, description: 'Auto-assign doctor based on availability' })
+  @ApiPropertyOptional({ example: false })
   @IsOptional()
   @IsBoolean()
   autoAssign?: boolean;

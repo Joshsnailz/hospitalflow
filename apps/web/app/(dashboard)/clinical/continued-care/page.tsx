@@ -485,9 +485,9 @@ export default function ContinuedCarePage() {
                   <TableRow key={plan.id}>
                     <TableCell className="font-medium">
                       {plan.patientName || plan.patientId}
-                      {plan.patientChiNumber && (
+                      {(plan.patientChi || plan.patientChiNumber) && (
                         <span className="block text-xs text-muted-foreground">
-                          CHI: {plan.patientChiNumber}
+                          CHI: {plan.patientChi || plan.patientChiNumber}
                         </span>
                       )}
                     </TableCell>

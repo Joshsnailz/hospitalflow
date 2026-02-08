@@ -257,11 +257,11 @@ export function PatientJourneyTimeline({ patientId }: PatientJourneyTimelineProp
           timelineEvents.push({
             id: `appt-${appt.id}`,
             type: 'appointment',
-            date: `${appt.scheduledDate}T${appt.scheduledTime}`,
+            date: appt.scheduledDate,
             status: appt.status,
             summary: appt.reason
-              ? `${formatStatusLabel(appt.type)} — ${appt.reason}`
-              : formatStatusLabel(appt.type),
+              ? `${formatStatusLabel(appt.appointmentType || appt.type)} — ${appt.reason}`
+              : formatStatusLabel(appt.appointmentType || appt.type),
             clinician: appt.doctorName || 'Unassigned',
           });
         });
@@ -277,8 +277,8 @@ export function PatientJourneyTimeline({ patientId }: PatientJourneyTimelineProp
             date: enc.admissionDate,
             status: enc.status,
             summary: enc.chiefComplaint
-              ? `${formatStatusLabel(enc.type)} — ${enc.chiefComplaint}`
-              : formatStatusLabel(enc.type),
+              ? `${formatStatusLabel(enc.encounterType || enc.type)} — ${enc.chiefComplaint}`
+              : formatStatusLabel(enc.encounterType || enc.type),
             clinician: enc.doctorName || 'Unassigned',
           });
         });

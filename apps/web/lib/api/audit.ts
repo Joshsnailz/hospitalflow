@@ -58,7 +58,7 @@ export interface PaginatedAuditLogs {
 }
 
 export const auditApi = {
-  getLogs: async (filters: AuditLogFilter = {}): Promise<{ success: boolean; data: PaginatedAuditLogs }> => {
+  getLogs: async (filters: AuditLogFilter = {}): Promise<{ success: boolean; data: AuditLog[]; total: number; page: number; limit: number; totalPages: number }> => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== '') {
@@ -74,7 +74,7 @@ export const auditApi = {
     return response.data;
   },
 
-  getUserLogs: async (userId: string, filters: AuditLogFilter = {}): Promise<{ success: boolean; data: PaginatedAuditLogs }> => {
+  getUserLogs: async (userId: string, filters: AuditLogFilter = {}): Promise<{ success: boolean; data: AuditLog[]; total: number; page: number; limit: number; totalPages: number }> => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== '') {
@@ -93,7 +93,7 @@ export const auditApi = {
     return response.data;
   },
 
-  getDataAccessLogs: async (filters: AuditLogFilter = {}): Promise<{ success: boolean; data: PaginatedAuditLogs }> => {
+  getDataAccessLogs: async (filters: AuditLogFilter = {}): Promise<{ success: boolean; data: AuditLog[]; total: number; page: number; limit: number; totalPages: number }> => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== '') {

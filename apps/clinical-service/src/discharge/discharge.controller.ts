@@ -5,10 +5,12 @@ import {
   Patch,
   Body,
   Param,
+  Query,
   UseGuards,
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -24,6 +26,7 @@ import {
   UpdatePharmacySectionDto,
   UpdateOperationsSectionDto,
   UpdateNursingSectionDto,
+  UpdateFollowUpSectionDto,
   UpdateVitalsDto,
   CompleteDischargeDto,
 } from './dto';
@@ -45,14 +48,26 @@ export class DischargeController {
   @ApiResponse({ status: 201, description: 'Discharge form created successfully' })
   @ApiResponse({ status: 409, description: 'Discharge form already exists for this encounter' })
   async create(
-    @Body() dto: CreateDischargeFormDto & { encounterId: string },
+    @Body() dto: CreateDischargeFormDto & { encounterId?: string },
     @CurrentUser('id') currentUserId: string,
   ) {
-    const form = await this.dischargeService.create(dto.encounterId, dto, currentUserId);
+    const form = await this.dischargeService.create(dto.encounterId || null, dto, currentUserId);
     return {
       success: true,
       message: 'Discharge form created successfully',
       data: form,
+    };
+  }
+
+  @Get()
+  @Roles(...CLINICAL_ACCESS_ROLES)
+  @ApiOperation({ summary: 'Get all discharge forms with optional status filter' })
+  @ApiResponse({ status: 200, description: 'Discharge forms retrieved successfully' })
+  async findAll(@Query('status') status?: string) {
+    const forms = await this.dischargeService.findAll(status ? { status } : undefined);
+    return {
+      success: true,
+      data: forms,
     };
   }
 
@@ -117,6 +132,30 @@ export class DischargeController {
     const form = await this.dischargeService.findOne(id);
     return {
       success: true,
+      data: form,
+    };
+  }
+
+  @Patch(':id/section')
+  @Roles(...CLINICAL_ACCESS_ROLES)
+  @ApiOperation({ summary: 'Update a section of the discharge form (generic endpoint)' })
+  @ApiParam({ name: 'id', description: 'Discharge form UUID' })
+  @ApiResponse({ status: 200, description: 'Section updated successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid section name' })
+  @ApiResponse({ status: 409, description: 'Version conflict' })
+  async updateSection(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { section: string; content: Record<string, any>; version: number },
+    @CurrentUser('id') currentUserId: string,
+  ) {
+    const { section, content, version } = body;
+    if (!section) {
+      throw new BadRequestException('Section name is required');
+    }
+    const form = await this.dischargeService.updateSection(id, section, content || {}, version || 1, currentUserId);
+    return {
+      success: true,
+      message: `${section} section updated successfully`,
       data: form,
     };
   }
@@ -193,6 +232,25 @@ export class DischargeController {
     return {
       success: true,
       message: 'Nursing section updated successfully',
+      data: form,
+    };
+  }
+
+  @Patch(':id/followup')
+  @Roles(...CLINICAL_ACCESS_ROLES)
+  @ApiOperation({ summary: 'Update follow-up section of discharge form' })
+  @ApiParam({ name: 'id', description: 'Discharge form UUID' })
+  @ApiResponse({ status: 200, description: 'Follow-up section updated successfully' })
+  @ApiResponse({ status: 409, description: 'Version conflict' })
+  async updateFollowUpSection(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateFollowUpSectionDto,
+    @CurrentUser('id') currentUserId: string,
+  ) {
+    const form = await this.dischargeService.updateFollowUpSection(id, dto, currentUserId);
+    return {
+      success: true,
+      message: 'Follow-up section updated successfully',
       data: form,
     };
   }

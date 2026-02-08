@@ -44,6 +44,7 @@ export function PatientList() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
+  const [searchInput, setSearchInput] = useState('');
   const [filters, setFilters] = useState<PatientFilterDto>({
     search: '',
     gender: undefined,
@@ -79,6 +80,10 @@ export function PatientList() {
       [key]: value === 'all' ? undefined : value,
       page: key === 'page' ? value : 1,
     }));
+  };
+
+  const handleSearch = () => {
+    handleFilterChange('search', searchInput);
   };
 
   const formatDate = (dateString: string) => {
@@ -150,14 +155,21 @@ export function PatientList() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-4 md:flex-row md:items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name, CHI number, or email..."
-                value={filters.search}
-                onChange={(e) => handleFilterChange('search', e.target.value)}
-                className="pl-10"
-              />
+            <div className="flex flex-1 gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name, CHI number, or email..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
+                  className="pl-10"
+                />
+              </div>
+              <Button type="button" variant="secondary" onClick={handleSearch}>
+                <Search className="h-4 w-4 mr-1" />
+                Search
+              </Button>
             </div>
             <Select
               value={filters.gender || 'all'}

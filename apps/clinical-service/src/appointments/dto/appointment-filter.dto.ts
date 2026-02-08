@@ -31,10 +31,10 @@ export class AppointmentFilterDto {
   status?: AppointmentStatus;
 
   @ApiPropertyOptional({
-    enum: ['consultation', 'follow_up', 'check_up', 'emergency', 'referral', 'lab_review', 'imaging', 'nursing_assessment'],
+    enum: ['consultation', 'follow_up', 'check_up', 'emergency', 'referral', 'lab_review', 'imaging', 'imaging_review', 'nursing_assessment', 'procedure'],
   })
   @IsOptional()
-  @IsEnum(['consultation', 'follow_up', 'check_up', 'emergency', 'referral', 'lab_review', 'imaging', 'nursing_assessment'])
+  @IsEnum(['consultation', 'follow_up', 'check_up', 'emergency', 'referral', 'lab_review', 'imaging', 'imaging_review', 'nursing_assessment', 'procedure'])
   appointmentType?: AppointmentType;
 
   @ApiPropertyOptional({ example: '2024-01-01' })
