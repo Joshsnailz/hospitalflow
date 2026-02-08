@@ -208,6 +208,73 @@ export class ClinicalService {
     }
   }
 
+  async getAppointmentQueue(query: Record<string, any>, authHeader: string) {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get('/appointments/queue', {
+          headers: { Authorization: authHeader },
+          params: query,
+        }),
+      );
+      return response.data;
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  async getMyAppointments(query: Record<string, any>, authHeader: string) {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get('/appointments/my-appointments', {
+          headers: { Authorization: authHeader },
+          params: query,
+        }),
+      );
+      return response.data;
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  async assignClinician(id: string, dto: Record<string, any>, authHeader: string) {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(`/appointments/${id}/assign`, dto, {
+          headers: { Authorization: authHeader },
+        }),
+      );
+      return response.data;
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  async acceptAppointment(id: string, authHeader: string) {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(`/appointments/${id}/accept`, {}, {
+          headers: { Authorization: authHeader },
+        }),
+      );
+      return response.data;
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  async rejectAppointment(id: string, dto: Record<string, any>, authHeader: string) {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(`/appointments/${id}/reject`, dto, {
+          headers: { Authorization: authHeader },
+        }),
+      );
+      return response.data;
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
   // ==================== Discharge ====================
 
   async createDischargeForm(dto: Record<string, any>, authHeader: string) {

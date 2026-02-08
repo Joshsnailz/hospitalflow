@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { clinicalApi } from '@/lib/api/clinical';
 import { hospitalsApi } from '@/lib/api/hospitals';
 import { usersApi } from '@/lib/api/users';
+import { isAdmin, isClinician } from '@/lib/permissions';
 import type { Appointment, AppointmentStatus, AppointmentType } from '@/lib/types/clinical';
 import type { Hospital, Department, Ward, Bed } from '@/lib/types/hospital';
 import type { User } from '@/lib/types/user';
@@ -57,6 +58,7 @@ import {
   ClipboardCheck,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { AppointmentActionModals } from './components/AppointmentActionModals';
 
 // -- helpers ------------------------------------------------------------------
 
@@ -68,6 +70,17 @@ const STATUS_BADGE_MAP: Record<AppointmentStatus, { label: string; variant: 'def
   cancelled: { label: 'Cancelled', variant: 'destructive' },
   no_show: { label: 'No Show', variant: 'destructive' },
   rescheduled: { label: 'Rescheduled', variant: 'secondary' },
+};
+
+// Assignment status badges
+type AssignmentStatus = 'pending' | 'assigned' | 'accepted' | 'rejected' | 'referred' | 'completed';
+const ASSIGNMENT_BADGE_MAP: Record<AssignmentStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' }> = {
+  pending: { label: 'Pending', variant: 'secondary' },
+  assigned: { label: 'Assigned', variant: 'warning' },
+  accepted: { label: 'Accepted', variant: 'success' },
+  rejected: { label: 'Rejected', variant: 'destructive' },
+  referred: { label: 'Referred', variant: 'default' },
+  completed: { label: 'Completed', variant: 'success' },
 };
 
 const TYPE_LABELS: Record<AppointmentType, string> = {
@@ -142,6 +155,11 @@ export default function AppointmentsPage() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [referDialogOpen, setReferDialogOpen] = useState(false);
 
+  // Queue-based action dialogs (new)
+  const [acceptDialogOpen, setAcceptDialogOpen] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [queueReferDialogOpen, setQueueReferDialogOpen] = useState(false);
+
   // Reschedule form
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleTime, setRescheduleTime] = useState('');
@@ -204,7 +222,16 @@ export default function AppointmentsPage() {
       if (dateFrom) params.dateFrom = dateFrom;
       if (dateTo) params.dateTo = dateTo;
 
-      const response = await clinicalApi.getAppointments(params);
+      // Role-based API call
+      let response;
+      if (isClinician(user?.role)) {
+        // Clinicians see only their assigned appointments
+        response = await clinicalApi.getMyAppointments(params);
+      } else {
+        // Admins see all appointments
+        response = await clinicalApi.getAppointments(params);
+      }
+
       if (response.success) {
         setAppointments(response.data);
       } else {
@@ -215,7 +242,7 @@ export default function AppointmentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, typeFilter, doctorFilter, dateFrom, dateTo]);
+  }, [statusFilter, typeFilter, doctorFilter, dateFrom, dateTo, user?.role]);
 
   const fetchDoctors = useCallback(async () => {
     try {
@@ -799,6 +826,7 @@ export default function AppointmentsPage() {
                     Status
                     <SortIcon field="status" />
                   </TableHead>
+                  <TableHead>Assignment</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -828,6 +856,13 @@ export default function AppointmentsPage() {
                       <TableCell>
                         <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
                       </TableCell>
+                      <TableCell>
+                        {(apt as any).assignmentStatus && (
+                          <Badge variant={(ASSIGNMENT_BADGE_MAP[(apt as any).assignmentStatus as AssignmentStatus] || { variant: 'secondary' }).variant}>
+                            {(ASSIGNMENT_BADGE_MAP[(apt as any).assignmentStatus as AssignmentStatus] || { label: (apt as any).assignmentStatus }).label}
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Button
@@ -839,6 +874,55 @@ export default function AppointmentsPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
+
+                          {/* Queue-based action buttons for clinicians */}
+                          {isClinician(user?.role) && (apt as any).assignmentStatus === 'assigned' && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 p-0 px-2 text-green-600 hover:text-green-700 gap-1"
+                                title="Accept Appointment"
+                                onClick={() => {
+                                  setSelectedAppointment(apt);
+                                  setAcceptDialogOpen(true);
+                                }}
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                                <span className="text-xs">Accept</span>
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 p-0 px-2 text-red-600 hover:text-red-700 gap-1"
+                                title="Reject Appointment"
+                                onClick={() => {
+                                  setSelectedAppointment(apt);
+                                  setRejectDialogOpen(true);
+                                }}
+                              >
+                                <XCircle className="h-4 w-4" />
+                                <span className="text-xs">Reject</span>
+                              </Button>
+                            </>
+                          )}
+
+                          {/* Refer button for accepted appointments */}
+                          {isClinician(user?.role) && ['assigned', 'accepted'].includes((apt as any).assignmentStatus) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 p-0 px-2 text-blue-600 hover:text-blue-700 gap-1"
+                              title="Refer to Another Clinician"
+                              onClick={() => {
+                                setSelectedAppointment(apt);
+                                setQueueReferDialogOpen(true);
+                              }}
+                            >
+                              <ArrowRightLeft className="h-4 w-4" />
+                              <span className="text-xs">Refer</span>
+                            </Button>
+                          )}
                           {(apt.status === 'scheduled' || apt.status === 'confirmed') && (
                             <Button
                               variant="ghost"
@@ -1377,6 +1461,20 @@ export default function AppointmentsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Queue-based Action Modals */}
+      <AppointmentActionModals
+        appointment={selectedAppointment}
+        acceptDialogOpen={acceptDialogOpen}
+        setAcceptDialogOpen={setAcceptDialogOpen}
+        rejectDialogOpen={rejectDialogOpen}
+        setRejectDialogOpen={setRejectDialogOpen}
+        referDialogOpen={queueReferDialogOpen}
+        setReferDialogOpen={setQueueReferDialogOpen}
+        onSuccess={showToast.bind(null, 'success')}
+        onError={showToast.bind(null, 'error')}
+        onRefresh={fetchAppointments}
+      />
     </div>
   );
 }

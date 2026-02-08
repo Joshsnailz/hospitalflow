@@ -21,6 +21,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { SnomedSingleAutocomplete } from '@/components/ui/snomed-single-autocomplete';
+import { COMMON_ALLERGIES } from '@/lib/constants/snomed';
 import { patientsApi } from '@/lib/api/patients';
 import type { Allergy, CreateAllergyDto, AllergyType, AllergySeverity, AllergyStatus } from '@/lib/types/patient';
 import { Plus, Edit, Trash2, Loader2, AlertTriangle } from 'lucide-react';
@@ -228,11 +230,15 @@ export function AllergiesSection({ patientId, initialData, onCountChange }: Alle
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <Label>Allergen Name *</Label>
-              <Input
+              <SnomedSingleAutocomplete
+                concepts={COMMON_ALLERGIES}
                 value={formData.allergenName}
-                onChange={(e) => setFormData({ ...formData, allergenName: e.target.value })}
-                placeholder="e.g., Penicillin, Peanuts"
+                onChange={(value) => setFormData({ ...formData, allergenName: value })}
+                placeholder="Search common allergies or enter custom..."
               />
+              <p className="text-xs text-gray-500">
+                Start typing to see SNOMED CT common allergies or enter your own
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

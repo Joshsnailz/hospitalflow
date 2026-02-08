@@ -32,7 +32,7 @@ export class EmergencyService {
     const saved = await this.emergencyVisitRepository.save(visit);
 
     this.eventPublisher.publishAuditLog({
-      action: 'emergency_visit.created',
+      action: 'CREATE',
       resource: 'emergency_visit',
       resourceId: saved.id,
       status: 'success',
@@ -112,7 +112,7 @@ export class EmergencyService {
     const saved = await this.emergencyVisitRepository.save(visit);
 
     this.eventPublisher.publishAuditLog({
-      action: 'emergency_visit.updated',
+      action: 'UPDATE',
       resource: 'emergency_visit',
       resourceId: saved.id,
       status: 'success',
@@ -192,7 +192,7 @@ export class EmergencyService {
 
     this.eventPublisher.publishAuditLog({
       userId,
-      action: 'emergency_visit.disposed',
+      action: 'UPDATE',
       resource: 'emergency_visit',
       resourceId: saved.id,
       status: 'success',

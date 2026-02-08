@@ -65,7 +65,7 @@ export class HospitalsService {
 
     this.eventPublisher.publishAuditLog({
       userId,
-      action: 'hospital.created',
+      action: 'CREATE',
       resource: 'hospital',
       resourceId: saved.id,
       status: 'success',
@@ -165,7 +165,7 @@ export class HospitalsService {
     }
 
     this.eventPublisher.publishAuditLog({
-      action: 'hospital.updated',
+      action: 'UPDATE',
       resource: 'hospital',
       resourceId: saved.id,
       status: 'success',
@@ -204,7 +204,7 @@ export class HospitalsService {
 
     this.eventPublisher.publishAuditLog({
       userId,
-      action: 'department.created',
+      action: 'CREATE',
       resource: 'department',
       resourceId: saved.id,
       status: 'success',
@@ -268,7 +268,7 @@ export class HospitalsService {
     });
 
     this.eventPublisher.publishAuditLog({
-      action: 'department.updated',
+      action: 'UPDATE',
       resource: 'department',
       resourceId: saved.id,
       status: 'success',
@@ -307,7 +307,7 @@ export class HospitalsService {
 
     this.eventPublisher.publishAuditLog({
       userId,
-      action: 'ward.created',
+      action: 'CREATE',
       resource: 'ward',
       resourceId: saved.id,
       status: 'success',
@@ -371,7 +371,7 @@ export class HospitalsService {
     });
 
     this.eventPublisher.publishAuditLog({
-      action: 'ward.updated',
+      action: 'UPDATE',
       resource: 'ward',
       resourceId: saved.id,
       status: 'success',
@@ -413,7 +413,7 @@ export class HospitalsService {
 
     this.eventPublisher.publishAuditLog({
       userId,
-      action: 'bed.created',
+      action: 'CREATE',
       resource: 'bed',
       resourceId: savedBed.id,
       status: 'success',
@@ -483,7 +483,7 @@ export class HospitalsService {
     });
 
     this.eventPublisher.publishAuditLog({
-      action: 'bed.status.changed',
+      action: 'UPDATE',
       resource: 'bed',
       resourceId: saved.id,
       status: 'success',

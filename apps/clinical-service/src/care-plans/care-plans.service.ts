@@ -32,7 +32,7 @@ export class CarePlansService {
 
     this.eventPublisher.publishAuditLog({
       userId,
-      action: 'care_plan.created',
+      action: 'CREATE',
       resource: 'care_plan',
       resourceId: saved.id,
       status: 'success',
@@ -104,7 +104,7 @@ export class CarePlansService {
     const saved = await this.carePlanRepository.save(carePlan);
 
     this.eventPublisher.publishAuditLog({
-      action: 'care_plan.updated',
+      action: 'UPDATE',
       resource: 'care_plan',
       resourceId: saved.id,
       status: 'success',

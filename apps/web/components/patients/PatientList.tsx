@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,6 +44,10 @@ export function PatientList() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
+  // Separate search input value from actual filter for debouncing
+  const [searchInput, setSearchInput] = useState('');
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const [filters, setFilters] = useState<PatientFilterDto>({
     search: '',
     gender: undefined,
@@ -73,12 +77,36 @@ export function PatientList() {
     fetchPatients();
   }, [fetchPatients]);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleFilterChange = (key: keyof PatientFilterDto, value: any) => {
     setFilters((prev) => ({
       ...prev,
       [key]: value === 'all' ? undefined : value,
       page: key === 'page' ? value : 1,
     }));
+  };
+
+  // Debounced search handler - only triggers search after user stops typing
+  const handleSearchChange = (value: string) => {
+    setSearchInput(value);
+
+    // Clear existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Set new timeout - search after 500ms of no typing
+    searchTimeoutRef.current = setTimeout(() => {
+      handleFilterChange('search', value);
+    }, 500);
   };
 
   const formatDate = (dateString: string) => {
@@ -154,8 +182,8 @@ export function PatientList() {
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search by name, CHI number, or email..."
-                value={filters.search}
-                onChange={(e) => handleFilterChange('search', e.target.value)}
+                value={searchInput}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-10"
               />
             </div>

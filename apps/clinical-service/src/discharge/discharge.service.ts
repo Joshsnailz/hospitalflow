@@ -54,7 +54,7 @@ export class DischargeService {
 
     this.eventPublisher.publishAuditLog({
       userId,
-      action: 'discharge_form.created',
+      action: 'CREATE',
       resource: 'discharge_form',
       resourceId: saved.id,
       status: 'success',
@@ -142,7 +142,7 @@ export class DischargeService {
 
     this.eventPublisher.publishAuditLog({
       userId,
-      action: 'discharge_form.clinical_section_updated',
+      action: 'UPDATE',
       resource: 'discharge_form',
       resourceId: saved.id,
       status: 'success',
@@ -184,7 +184,7 @@ export class DischargeService {
 
     this.eventPublisher.publishAuditLog({
       userId,
-      action: 'discharge_form.pharmacy_section_updated',
+      action: 'UPDATE',
       resource: 'discharge_form',
       resourceId: saved.id,
       status: 'success',
@@ -224,7 +224,7 @@ export class DischargeService {
 
     this.eventPublisher.publishAuditLog({
       userId,
-      action: 'discharge_form.operations_section_updated',
+      action: 'UPDATE',
       resource: 'discharge_form',
       resourceId: saved.id,
       status: 'success',
@@ -264,7 +264,7 @@ export class DischargeService {
 
     this.eventPublisher.publishAuditLog({
       userId,
-      action: 'discharge_form.nursing_section_updated',
+      action: 'UPDATE',
       resource: 'discharge_form',
       resourceId: saved.id,
       status: 'success',
@@ -305,7 +305,7 @@ export class DischargeService {
 
     this.eventPublisher.publishAuditLog({
       userId,
-      action: 'discharge_form.vitals_updated',
+      action: 'UPDATE',
       resource: 'discharge_form',
       resourceId: saved.id,
       status: 'success',
@@ -352,7 +352,7 @@ export class DischargeService {
 
     this.eventPublisher.publishAuditLog({
       userId,
-      action: 'discharge_form.completed',
+      action: 'APPROVE',
       resource: 'discharge_form',
       resourceId: savedForm.id,
       status: 'success',

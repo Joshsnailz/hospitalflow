@@ -31,7 +31,7 @@ export class ControlledDrugsService {
 
     this.eventPublisher.publishAuditLog({
       userId,
-      action: 'controlled_drug_entry.created',
+      action: 'CREATE',
       resource: 'controlled_drug_entry',
       resourceId: saved.id,
       status: 'success',

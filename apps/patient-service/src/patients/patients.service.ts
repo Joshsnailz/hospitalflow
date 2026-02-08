@@ -80,7 +80,7 @@ export class PatientsService {
     // Audit trail
     this.eventPublisher.publishAuditLog({
       userId: createdById,
-      action: 'patient.created',
+      action: 'CREATE',
       resource: 'patient',
       resourceId: saved.id,
       status: 'success',
@@ -242,7 +242,7 @@ export class PatientsService {
     // Audit trail
     this.eventPublisher.publishAuditLog({
       userId: updatedById,
-      action: 'patient.updated',
+      action: 'UPDATE',
       resource: 'patient',
       resourceId: saved.id,
       status: 'success',
@@ -275,7 +275,7 @@ export class PatientsService {
     // Audit trail
     this.eventPublisher.publishAuditLog({
       userId: deactivatedById,
-      action: 'patient.deactivated',
+      action: 'UPDATE',
       resource: 'patient',
       resourceId: saved.id,
       status: 'success',
@@ -307,7 +307,7 @@ export class PatientsService {
     // Audit trail
     this.eventPublisher.publishAuditLog({
       userId: reactivatedById,
-      action: 'patient.reactivated',
+      action: 'UPDATE',
       resource: 'patient',
       resourceId: saved.id,
       status: 'success',

@@ -85,30 +85,7 @@ export class PatientsController {
     return this.patientsService.findByChiNumber(chi, authHeader);
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get patient by ID' })
-  @ApiParam({ name: 'id', description: 'Patient UUID' })
-  @ApiResponse({ status: 200, description: 'Patient retrieved successfully' })
-  @ApiResponse({ status: 404, description: 'Patient not found' })
-  async findOne(
-    @Param('id') id: string,
-    @Headers('authorization') authHeader: string,
-  ) {
-    return this.patientsService.findOne(id, authHeader);
-  }
-
-  @Patch(':id')
-  @ApiOperation({ summary: 'Update patient' })
-  @ApiParam({ name: 'id', description: 'Patient UUID' })
-  @ApiResponse({ status: 200, description: 'Patient updated successfully' })
-  @ApiResponse({ status: 404, description: 'Patient not found' })
-  async update(
-    @Param('id') id: string,
-    @Body() updatePatientDto: Record<string, any>,
-    @Headers('authorization') authHeader: string,
-  ) {
-    return this.patientsService.update(id, updatePatientDto, authHeader);
-  }
+  // Generic :id routes moved to end to avoid conflicts
 
   @Post(':id/deactivate')
   @ApiOperation({ summary: 'Deactivate a patient (soft delete)' })
@@ -358,5 +335,33 @@ export class PatientsController {
     @Headers('authorization') authHeader: string,
   ) {
     return this.patientsService.removeMedicalAid(id, medicalAidId, authHeader);
+  }
+
+  // ==================== Generic Patient Routes ====================
+  // IMPORTANT: Generic :id routes placed LAST to avoid route conflicts
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get patient by ID' })
+  @ApiParam({ name: 'id', description: 'Patient UUID' })
+  @ApiResponse({ status: 200, description: 'Patient retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Patient not found' })
+  async findOne(
+    @Param('id') id: string,
+    @Headers('authorization') authHeader: string,
+  ) {
+    return this.patientsService.findOne(id, authHeader);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update patient' })
+  @ApiParam({ name: 'id', description: 'Patient UUID' })
+  @ApiResponse({ status: 200, description: 'Patient updated successfully' })
+  @ApiResponse({ status: 404, description: 'Patient not found' })
+  async update(
+    @Param('id') id: string,
+    @Body() updatePatientDto: Record<string, any>,
+    @Headers('authorization') authHeader: string,
+  ) {
+    return this.patientsService.update(id, updatePatientDto, authHeader);
   }
 }

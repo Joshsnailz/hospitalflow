@@ -18,6 +18,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { patientsApi } from '@/lib/api/patients';
 import type { Patient, CreatePatientDto, Gender, MaritalStatus } from '@/lib/types/patient';
 import { Loader2, CheckCircle, AlertCircle, User, Phone, MapPin, Stethoscope } from 'lucide-react';
+import { COUNTRIES, NATIONALITIES } from '@/lib/constants/countries';
+import { validateZimbabweanPhone, formatPhoneAsTyping, PHONE_EXAMPLES } from '@/lib/utils/phoneValidation';
 
 interface PatientFormProps {
   patient?: Patient;
@@ -51,6 +53,10 @@ export function PatientForm({ patient, mode }: PatientFormProps) {
     exists?: boolean;
   } | null>(null);
   const [isValidatingChi, setIsValidatingChi] = useState(false);
+
+  // Phone validation state
+  const [phonePrimaryValidation, setPhonePrimaryValidation] = useState<{ isValid: boolean; errors: string[] }>({ isValid: true, errors: [] });
+  const [phoneSecondaryValidation, setPhoneSecondaryValidation] = useState<{ isValid: boolean; errors: string[] }>({ isValid: true, errors: [] });
 
   const [formData, setFormData] = useState<CreatePatientDto>({
     chiNumber: patient?.chiNumber || '',
@@ -275,12 +281,21 @@ export function PatientForm({ patient, mode }: PatientFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="nationality">Nationality</Label>
-            <Input
-              id="nationality"
+            <Select
               value={formData.nationality}
-              onChange={(e) => handleChange('nationality', e.target.value)}
-              placeholder="British"
-            />
+              onValueChange={(value) => handleChange('nationality', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select nationality" />
+              </SelectTrigger>
+              <SelectContent>
+                {NATIONALITIES.map((nationality) => (
+                  <SelectItem key={nationality} value={nationality}>
+                    {nationality}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
@@ -330,19 +345,39 @@ export function PatientForm({ patient, mode }: PatientFormProps) {
             <Input
               id="phonePrimary"
               value={formData.phonePrimary}
-              onChange={(e) => handleChange('phonePrimary', e.target.value)}
-              placeholder="+441234567890"
+              onChange={(e) => {
+                const formatted = formatPhoneAsTyping(e.target.value);
+                handleChange('phonePrimary', formatted);
+                const validation = validateZimbabweanPhone(formatted);
+                setPhonePrimaryValidation(validation);
+              }}
+              placeholder={PHONE_EXAMPLES.mobile}
+              className={!phonePrimaryValidation.isValid && formData.phonePrimary ? 'border-red-500' : ''}
             />
+            {!phonePrimaryValidation.isValid && formData.phonePrimary && (
+              <p className="text-xs text-red-600">{phonePrimaryValidation.errors[0]}</p>
+            )}
+            <p className="text-xs text-gray-500">Format: {PHONE_EXAMPLES.mobile}</p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phoneSecondary">Secondary Phone</Label>
+            <Label htmlFor="phoneSecondary">Secondary Phone (Optional)</Label>
             <Input
               id="phoneSecondary"
               value={formData.phoneSecondary}
-              onChange={(e) => handleChange('phoneSecondary', e.target.value)}
-              placeholder="+441234567891"
+              onChange={(e) => {
+                const formatted = formatPhoneAsTyping(e.target.value);
+                handleChange('phoneSecondary', formatted);
+                const validation = validateZimbabweanPhone(formatted);
+                setPhoneSecondaryValidation(validation);
+              }}
+              placeholder={PHONE_EXAMPLES.landline}
+              className={!phoneSecondaryValidation.isValid && formData.phoneSecondary ? 'border-red-500' : ''}
             />
+            {!phoneSecondaryValidation.isValid && formData.phoneSecondary && (
+              <p className="text-xs text-red-600">{phoneSecondaryValidation.errors[0]}</p>
+            )}
+            <p className="text-xs text-gray-500">Format: {PHONE_EXAMPLES.landline}</p>
           </div>
         </CardContent>
       </Card>
@@ -408,12 +443,21 @@ export function PatientForm({ patient, mode }: PatientFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="country">Country</Label>
-            <Input
-              id="country"
+            <Select
               value={formData.country}
-              onChange={(e) => handleChange('country', e.target.value)}
-              placeholder="United Kingdom"
-            />
+              onValueChange={(value) => handleChange('country', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select country" />
+              </SelectTrigger>
+              <SelectContent>
+                {COUNTRIES.map((country) => (
+                  <SelectItem key={country} value={country}>
+                    {country}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>

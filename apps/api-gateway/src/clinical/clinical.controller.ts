@@ -172,6 +172,24 @@ export class ClinicalController {
   }
 
   @ApiTags('appointments')
+  @Get('appointments/queue')
+  async getAppointmentQueue(
+    @Query() query: Record<string, any>,
+    @Headers('authorization') authHeader: string,
+  ) {
+    return this.clinicalService.getAppointmentQueue(query, authHeader);
+  }
+
+  @ApiTags('appointments')
+  @Get('appointments/my-appointments')
+  async getMyAppointments(
+    @Query() query: Record<string, any>,
+    @Headers('authorization') authHeader: string,
+  ) {
+    return this.clinicalService.getMyAppointments(query, authHeader);
+  }
+
+  @ApiTags('appointments')
   @Get('appointments/doctor/:doctorId/upcoming')
   async getUpcomingAppointments(
     @Param('doctorId') doctorId: string,
@@ -236,6 +254,35 @@ export class ClinicalController {
     @Headers('authorization') authHeader: string,
   ) {
     return this.clinicalService.referAppointment(id, dto, authHeader);
+  }
+
+  @ApiTags('appointments')
+  @Post('appointments/:id/assign')
+  async assignClinician(
+    @Param('id') id: string,
+    @Body() dto: Record<string, any>,
+    @Headers('authorization') authHeader: string,
+  ) {
+    return this.clinicalService.assignClinician(id, dto, authHeader);
+  }
+
+  @ApiTags('appointments')
+  @Post('appointments/:id/accept')
+  async acceptAppointment(
+    @Param('id') id: string,
+    @Headers('authorization') authHeader: string,
+  ) {
+    return this.clinicalService.acceptAppointment(id, authHeader);
+  }
+
+  @ApiTags('appointments')
+  @Post('appointments/:id/reject')
+  async rejectAppointment(
+    @Param('id') id: string,
+    @Body() dto: Record<string, any>,
+    @Headers('authorization') authHeader: string,
+  ) {
+    return this.clinicalService.rejectAppointment(id, dto, authHeader);
   }
 
   @ApiTags('appointments')

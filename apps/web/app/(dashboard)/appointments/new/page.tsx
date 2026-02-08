@@ -76,9 +76,13 @@ export default function NewAppointmentPage() {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
 
-  // Doctors
-  const [doctors, setDoctors] = useState<User[]>([]);
-  const [doctorsLoading, setDoctorsLoading] = useState(false);
+  // Doctors/Clinicians
+  const [clinicians, setClinicians] = useState<User[]>([]);
+  const [cliniciansLoading, setCliniciansLoading] = useState(false);
+  const [clinicianSearch, setClinicianSearch] = useState('');
+  const [clinicianResults, setClinicianResults] = useState<User[]>([]);
+  const [selectedClinician, setSelectedClinician] = useState<User | null>(null);
+  const [showClinicianDropdown, setShowClinicianDropdown] = useState(false);
 
   // Hospitals & departments
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
@@ -104,17 +108,22 @@ export default function NewAppointmentPage() {
   // -- data fetching ----------------------------------------------------------
 
   useEffect(() => {
-    const fetchDoctors = async () => {
+    const fetchClinicians = async () => {
       try {
-        setDoctorsLoading(true);
-        const response = await usersApi.findAll({ role: 'doctor', limit: 200 });
+        setCliniciansLoading(true);
+        // Fetch all clinicians: doctors, consultants, nurses, etc.
+        const response = await usersApi.findAll({
+          role: 'doctor,consultant,nurse,hospital_pharmacist,prescriber',
+          limit: 200
+        });
         if (response.success) {
-          setDoctors(response.data);
+          setClinicians(response.data);
+          setClinicianResults(response.data); // Initialize with all clinicians
         }
       } catch {
         // Non-critical
       } finally {
-        setDoctorsLoading(false);
+        setCliniciansLoading(false);
       }
     };
 
@@ -132,9 +141,46 @@ export default function NewAppointmentPage() {
       }
     };
 
-    fetchDoctors();
+    fetchClinicians();
     fetchHospitals();
   }, []);
+
+  // Handle clinician search
+  const handleClinicianSearchChange = useCallback((value: string) => {
+    setClinicianSearch(value);
+    if (value.trim().length === 0) {
+      setClinicianResults(clinicians);
+      setShowClinicianDropdown(false);
+      return;
+    }
+    const searchLower = value.toLowerCase();
+    const filtered = clinicians.filter((c) =>
+      `${c.firstName} ${c.lastName}`.toLowerCase().includes(searchLower) ||
+      c.email.toLowerCase().includes(searchLower) ||
+      c.role.toLowerCase().includes(searchLower)
+    );
+    setClinicianResults(filtered);
+    setShowClinicianDropdown(true);
+  }, [clinicians]);
+
+  const selectClinician = useCallback((clinician: User) => {
+    setSelectedClinician(clinician);
+    setSelectedDoctor(clinician.id);
+    setClinicianSearch(`${clinician.firstName} ${clinician.lastName}`);
+    setShowClinicianDropdown(false);
+    setValidationErrors((prev) => {
+      const next = { ...prev };
+      delete next.doctor;
+      return next;
+    });
+  }, []);
+
+  const clearClinician = useCallback(() => {
+    setSelectedClinician(null);
+    setSelectedDoctor('');
+    setClinicianSearch('');
+    setClinicianResults(clinicians);
+  }, [clinicians]);
 
   // Fetch departments when hospital changes
   useEffect(() => {
@@ -624,30 +670,95 @@ export default function NewAppointmentPage() {
 
                   {!autoAssign && (
                     <div className="space-y-2">
-                      <Label>Select Doctor *</Label>
-                      <Select
-                        value={selectedDoctor}
-                        onValueChange={(val) => {
-                          setSelectedDoctor(val);
-                          setValidationErrors((prev) => {
-                            const next = { ...prev };
-                            delete next.doctor;
-                            return next;
-                          });
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={doctorsLoading ? 'Loading...' : 'Select a doctor'} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {doctors.map((doc) => (
-                            <SelectItem key={doc.id} value={doc.id}>
-                              Dr {doc.firstName} {doc.lastName}
-                              {doc.department ? ` - ${doc.department}` : ''}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Label>Select Clinician *</Label>
+                      {selectedClinician ? (
+                        <div className="flex items-center justify-between rounded-lg border p-3">
+                          <div className="flex items-center gap-3">
+                            <UserIcon className="h-5 w-5 text-muted-foreground" />
+                            <div className="flex flex-col gap-1">
+                              <span className="font-medium">
+                                {selectedClinician.firstName} {selectedClinician.lastName}
+                              </span>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Badge variant="outline" className="capitalize text-xs">
+                                  {selectedClinician.role.replace(/_/g, ' ')}
+                                </Badge>
+                                <span>{selectedClinician.email}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={clearClinician}
+                            className="h-8 w-8 p-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            placeholder="Type clinician name to search..."
+                            value={clinicianSearch}
+                            onChange={(e) => handleClinicianSearchChange(e.target.value)}
+                            onFocus={() => {
+                              if (clinicianResults.length > 0) setShowClinicianDropdown(true);
+                            }}
+                            onBlur={() => {
+                              setTimeout(() => setShowClinicianDropdown(false), 200);
+                            }}
+                            className="pl-9"
+                          />
+                          {cliniciansLoading && (
+                            <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                          )}
+
+                          {/* Dropdown results */}
+                          {showClinicianDropdown && clinicianResults.length > 0 && (
+                            <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg">
+                              <div className="max-h-60 overflow-auto py-1">
+                                {clinicianResults.map((clinician) => (
+                                  <button
+                                    key={clinician.id}
+                                    type="button"
+                                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-accent focus:bg-accent"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      selectClinician(clinician);
+                                    }}
+                                  >
+                                    <div>
+                                      <p className="font-medium">
+                                        {clinician.firstName} {clinician.lastName}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {clinician.email}
+                                      </p>
+                                    </div>
+                                    <Badge variant="outline" className="ml-2 capitalize text-xs">
+                                      {clinician.role.replace(/_/g, ' ')}
+                                    </Badge>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {showClinicianDropdown &&
+                            !cliniciansLoading &&
+                            clinicianSearch.length >= 1 &&
+                            clinicianResults.length === 0 && (
+                              <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-3 shadow-lg">
+                                <p className="text-sm text-muted-foreground text-center">
+                                  No clinicians found for &quot;{clinicianSearch}&quot;
+                                </p>
+                              </div>
+                            )}
+                        </div>
+                      )}
                       {validationErrors.doctor && (
                         <p className="text-sm text-red-600">{validationErrors.doctor}</p>
                       )}
@@ -656,8 +767,8 @@ export default function NewAppointmentPage() {
 
                   {autoAssign && (
                     <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-700">
-                      The system will automatically assign the most suitable available doctor based
-                      on the appointment type, date, and department.
+                      The system will automatically assign the most suitable available clinician based
+                      on the appointment type, date, department, and current workload.
                     </div>
                   )}
                 </div>

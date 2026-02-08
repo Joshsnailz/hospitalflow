@@ -99,6 +99,37 @@ export const clinicalApi = {
     return response.data;
   },
 
+  // Queue-based appointment methods
+  getAppointmentQueue: async (params?: { hospitalId?: string; departmentId?: string }): Promise<{ success: boolean; data: Appointment[]; total: number }> => {
+    const response = await apiClient.get('/appointments/queue', { params });
+    return response.data;
+  },
+
+  getMyAppointments: async (params?: Record<string, any>): Promise<{ success: boolean; data: Appointment[]; total: number }> => {
+    const response = await apiClient.get('/appointments/my-appointments', { params });
+    return response.data;
+  },
+
+  assignClinician: async (appointmentId: string, clinicianId: string): Promise<{ success: boolean; data: Appointment }> => {
+    const response = await apiClient.post(`/appointments/${appointmentId}/assign`, { clinicianId });
+    return response.data;
+  },
+
+  acceptAppointment: async (appointmentId: string): Promise<{ success: boolean; data: Appointment }> => {
+    const response = await apiClient.post(`/appointments/${appointmentId}/accept`);
+    return response.data;
+  },
+
+  rejectAppointment: async (appointmentId: string, reason: string): Promise<{ success: boolean; data: Appointment }> => {
+    const response = await apiClient.post(`/appointments/${appointmentId}/reject`, { reason });
+    return response.data;
+  },
+
+  referAppointmentTo: async (appointmentId: string, referToClinicianId: string, notes?: string): Promise<{ success: boolean; data: Appointment }> => {
+    const response = await apiClient.post(`/appointments/${appointmentId}/refer`, { referToClinicianId, notes });
+    return response.data;
+  },
+
   // Discharge
   createDischargeForm: async (data: Record<string, any>): Promise<{ success: boolean; data: DischargeForm }> => {
     const response = await apiClient.post('/discharge', data);

@@ -144,6 +144,12 @@ const menuConfig: NavSection[] = [
         icon: CalendarDays,
       },
       {
+        id: 'appointment-queue' as NavItemId,
+        name: 'Appointment Queue',
+        href: '/appointments/queue',
+        icon: ClipboardList,
+      },
+      {
         id: 'walk-in' as NavItemId,
         name: 'Walk-in Registration',
         href: '/appointments/walk-in',

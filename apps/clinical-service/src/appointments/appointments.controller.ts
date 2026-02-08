@@ -19,28 +19,44 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { AppointmentsService } from './appointments.service';
+import { QueueService } from './services/queue.service';
 import {
   CreateAppointmentDto,
   UpdateAppointmentDto,
   RescheduleAppointmentDto,
   AppointmentFilterDto,
   CompleteAppointmentDto,
+  AssignClinicianDto,
+  RejectAppointmentDto,
+  ReferAppointmentDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles, CurrentUser } from '../auth/decorators';
-import { CLINICAL_ACCESS_ROLES } from '../config/roles.config';
+import { CLINICAL_ACCESS_ROLES, ADMIN_ROLES, ROLES } from '../config/roles.config';
+
+// Clinician roles that can accept/reject/refer appointments
+const CLINICIAN_ROLES = [
+  ROLES.DOCTOR,
+  ROLES.CONSULTANT,
+  ROLES.NURSE,
+  ROLES.HOSPITAL_PHARMACIST,
+  ROLES.PRESCRIBER,
+];
 
 @ApiTags('appointments')
 @ApiBearerAuth('JWT-auth')
 @Controller('appointments')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AppointmentsController {
-  constructor(private readonly appointmentsService: AppointmentsService) {}
+  constructor(
+    private readonly appointmentsService: AppointmentsService,
+    private readonly queueService: QueueService,
+  ) {}
 
   @Post()
-  @Roles(...CLINICAL_ACCESS_ROLES)
-  @ApiOperation({ summary: 'Create a new appointment' })
+  @Roles(...ADMIN_ROLES)
+  @ApiOperation({ summary: 'Create a new appointment (Admin only)' })
   @ApiResponse({ status: 201, description: 'Appointment created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
   async create(
@@ -82,6 +98,44 @@ export class AppointmentsController {
     };
   }
 
+  @Get('queue')
+  @Roles(...ADMIN_ROLES)
+  @ApiOperation({ summary: 'Get queued appointments waiting for assignment (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Queued appointments retrieved successfully' })
+  async getQueue(
+    @Query('hospitalId') hospitalId?: string,
+    @Query('departmentId') departmentId?: string,
+  ) {
+    const queuedAppointments = await this.queueService.getQueuedAppointments(
+      hospitalId,
+      departmentId,
+    );
+    return {
+      success: true,
+      data: queuedAppointments,
+      total: queuedAppointments.length,
+    };
+  }
+
+  @Get('my-appointments')
+  @Roles(...CLINICIAN_ROLES)
+  @ApiOperation({ summary: 'Get appointments assigned to current clinician' })
+  @ApiResponse({ status: 200, description: 'Appointments retrieved successfully' })
+  async getMyAppointments(
+    @CurrentUser('id') clinicianId: string,
+    @Query() filters: AppointmentFilterDto,
+  ) {
+    const appointments = await this.appointmentsService.getMyAppointments(
+      clinicianId,
+      filters,
+    );
+    return {
+      success: true,
+      data: appointments,
+      total: appointments.length,
+    };
+  }
+
   @Get('doctor/:doctorId/upcoming')
   @Roles(...CLINICAL_ACCESS_ROLES)
   @ApiOperation({ summary: 'Get upcoming appointments for a doctor' })
@@ -108,6 +162,76 @@ export class AppointmentsController {
     return {
       success: true,
       data: appointments,
+    };
+  }
+
+  @Post(':id/assign')
+  @Roles(...ADMIN_ROLES)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Manually assign clinician to appointment (Admin only)' })
+  @ApiParam({ name: 'id', description: 'Appointment UUID' })
+  @ApiResponse({ status: 200, description: 'Clinician assigned successfully' })
+  @ApiResponse({ status: 404, description: 'Appointment not found' })
+  async assignClinician(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AssignClinicianDto,
+    @CurrentUser('id') adminId: string,
+  ) {
+    const appointment = await this.appointmentsService.assignClinician(
+      id,
+      dto.clinicianId,
+      adminId,
+    );
+    return {
+      success: true,
+      message: 'Clinician assigned successfully',
+      data: appointment,
+    };
+  }
+
+  @Post(':id/accept')
+  @Roles(...CLINICIAN_ROLES)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Accept assigned appointment (Clinician only)' })
+  @ApiParam({ name: 'id', description: 'Appointment UUID' })
+  @ApiResponse({ status: 200, description: 'Appointment accepted successfully' })
+  @ApiResponse({ status: 400, description: 'Cannot accept appointment in current state' })
+  @ApiResponse({ status: 403, description: 'You are not assigned to this appointment' })
+  @ApiResponse({ status: 404, description: 'Appointment not found' })
+  async acceptAppointment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') clinicianId: string,
+  ) {
+    const appointment = await this.appointmentsService.acceptAppointment(id, clinicianId);
+    return {
+      success: true,
+      message: 'Appointment accepted successfully',
+      data: appointment,
+    };
+  }
+
+  @Post(':id/reject')
+  @Roles(...CLINICIAN_ROLES)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reject assigned appointment (Clinician only)' })
+  @ApiParam({ name: 'id', description: 'Appointment UUID' })
+  @ApiResponse({ status: 200, description: 'Appointment rejected and returned to queue' })
+  @ApiResponse({ status: 403, description: 'You are not assigned to this appointment' })
+  @ApiResponse({ status: 404, description: 'Appointment not found' })
+  async rejectAppointment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RejectAppointmentDto,
+    @CurrentUser('id') clinicianId: string,
+  ) {
+    const appointment = await this.appointmentsService.rejectAppointment(
+      id,
+      clinicianId,
+      dto.reason,
+    );
+    return {
+      success: true,
+      message: 'Appointment rejected and returned to queue',
+      data: appointment,
     };
   }
 
@@ -223,21 +347,28 @@ export class AppointmentsController {
   }
 
   @Post(':id/refer')
-  @Roles(...CLINICAL_ACCESS_ROLES)
-  @ApiOperation({ summary: 'Create referral appointment' })
-  @ApiParam({ name: 'id', description: 'Original Appointment UUID' })
-  @ApiResponse({ status: 201, description: 'Referral created successfully' })
+  @Roles(...CLINICIAN_ROLES)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Refer appointment to another clinician (Clinician only)' })
+  @ApiParam({ name: 'id', description: 'Appointment UUID' })
+  @ApiResponse({ status: 200, description: 'Appointment referred successfully' })
+  @ApiResponse({ status: 403, description: 'You are not assigned to this appointment' })
   @ApiResponse({ status: 404, description: 'Appointment not found' })
   async refer(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body('newDoctorId', ParseUUIDPipe) newDoctorId: string,
-    @Body('reason') reason: string,
+    @Body() dto: ReferAppointmentDto,
+    @CurrentUser('id') clinicianId: string,
   ) {
-    const referral = await this.appointmentsService.refer(id, newDoctorId, reason);
+    const appointment = await this.appointmentsService.referAppointment(
+      id,
+      clinicianId,
+      dto.referToClinicianId,
+      dto.notes,
+    );
     return {
       success: true,
-      message: 'Referral created successfully',
-      data: referral,
+      message: 'Appointment referred successfully',
+      data: appointment,
     };
   }
 }

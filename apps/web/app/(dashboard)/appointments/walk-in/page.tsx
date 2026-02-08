@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import {
   ArrowLeft,
   Search,
@@ -38,6 +39,7 @@ import {
   FileText,
   X,
   ChevronRight,
+  Siren,
 } from 'lucide-react';
 
 // -- helpers ------------------------------------------------------------------
@@ -83,6 +85,14 @@ export default function WalkInRegistrationPage() {
 
   // Step tracking
   const [currentStep, setCurrentStep] = useState<1 | 2>(1);
+
+  // Accident & Emergency mode
+  const [isEmergencyMode, setIsEmergencyMode] = useState(false);
+  const [emergencyPatient, setEmergencyPatient] = useState({
+    estimatedAge: '',
+    gender: '',
+    briefDescription: '',
+  });
 
   // Patient search
   const [searchQuery, setSearchQuery] = useState('');
@@ -197,24 +207,90 @@ export default function WalkInRegistrationPage() {
     setTimeout(() => searchInputRef.current?.focus(), 100);
   };
 
+  const handleEmergencyModeToggle = (checked: boolean) => {
+    setIsEmergencyMode(checked);
+    if (checked) {
+      // Clear search when entering emergency mode
+      setSearchQuery('');
+      setSearchResults([]);
+      setHasSearched(false);
+      setSelectedPatient(null);
+    } else {
+      // Clear emergency form when exiting emergency mode
+      setEmergencyPatient({
+        estimatedAge: '',
+        gender: '',
+        briefDescription: '',
+      });
+    }
+  };
+
+  const handleEmergencyProceed = () => {
+    // Validate minimum emergency info
+    if (!emergencyPatient.gender) {
+      showToast('error', 'Please select patient gender');
+      return;
+    }
+    setCurrentStep(2);
+  };
+
   // -- submission -------------------------------------------------------------
 
   const handleRegisterAndCheckIn = async () => {
-    if (!selectedPatient) return;
-
     try {
       setSubmitting(true);
+
+      let patientId: string;
+      let patientName: string;
+
+      // If emergency mode, create a temporary John Doe patient first
+      if (isEmergencyMode) {
+        // Generate unique John Doe CHI number based on timestamp
+        const timestamp = Date.now();
+        const chiNumber = `EMERG${timestamp.toString().slice(-8)}`;
+
+        // Calculate approximate date of birth from estimated age
+        const estimatedAge = parseInt(emergencyPatient.estimatedAge) || 0;
+        const approxDob = new Date();
+        approxDob.setFullYear(approxDob.getFullYear() - estimatedAge);
+        const dobString = approxDob.toISOString().split('T')[0];
+
+        // Create John Doe patient
+        const patientData = {
+          chiNumber,
+          firstName: 'EMERGENCY',
+          lastName: `PATIENT ${timestamp.toString().slice(-6)}`,
+          dateOfBirth: dobString,
+          gender: emergencyPatient.gender as any,
+          notes: `A&E Emergency Case - ${emergencyPatient.briefDescription || 'No description provided'}. Estimated age: ${emergencyPatient.estimatedAge || 'Unknown'}`,
+        };
+
+        const patientResponse = await apiClient.post('/patients', patientData);
+        if (!patientResponse.data.success) {
+          throw new Error('Failed to create emergency patient record');
+        }
+
+        patientId = patientResponse.data.data.id;
+        patientName = `${patientData.firstName} ${patientData.lastName}`;
+      } else {
+        // Normal mode - use selected patient
+        if (!selectedPatient) return;
+        patientId = selectedPatient.id;
+        patientName = `${selectedPatient.firstName} ${selectedPatient.lastName}`;
+      }
 
       const today = getTodayDate();
       const now = getCurrentTime();
 
       const appointmentData: CreateAppointmentDto = {
-        patientId: selectedPatient.id,
+        patientId,
         type: 'consultation',
         scheduledDate: today,
         scheduledTime: now,
         autoAssign: true,
-        reason: reason.trim() || undefined,
+        reason: isEmergencyMode
+          ? `A&E Emergency - ${emergencyPatient.briefDescription || 'No details'}`
+          : reason.trim() || undefined,
       };
 
       if (selectedHospital) {
@@ -238,7 +314,7 @@ export default function WalkInRegistrationPage() {
 
       showToast(
         'success',
-        `Walk-in registered and checked in for ${selectedPatient.firstName} ${selectedPatient.lastName}`
+        `Walk-in registered and checked in for ${patientName}`
       );
 
       // Redirect to appointments list after a brief delay
@@ -332,41 +408,148 @@ export default function WalkInRegistrationPage() {
       {currentStep === 1 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Search className="h-5 w-5" />
-              Find Patient
-            </CardTitle>
-            <CardDescription>
-              Search for the patient by name or CHI number
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  {isEmergencyMode ? (
+                    <>
+                      <Siren className="h-5 w-5 text-red-600" />
+                      Accident & Emergency
+                    </>
+                  ) : (
+                    <>
+                      <Search className="h-5 w-5" />
+                      Find Patient
+                    </>
+                  )}
+                </CardTitle>
+                <CardDescription>
+                  {isEmergencyMode
+                    ? 'Emergency case without patient identification'
+                    : 'Search for the patient by name or CHI number'}
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="emergency-mode" className="text-sm font-medium cursor-pointer">
+                  A&E Mode
+                </Label>
+                <Switch
+                  id="emergency-mode"
+                  checked={isEmergencyMode}
+                  onCheckedChange={handleEmergencyModeToggle}
+                />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {/* Search Input */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  ref={searchInputRef}
-                  placeholder="Search by patient name or CHI number..."
-                  value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="pl-9 h-11"
-                  autoFocus
-                />
-                {searchLoading && (
-                  <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-                )}
-              </div>
+              {/* Emergency Mode Form */}
+              {isEmergencyMode ? (
+                <>
+                  <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 p-4">
+                    <div className="flex gap-2 mb-2">
+                      <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-red-900 dark:text-red-400">
+                          Emergency Case - No Patient Identification
+                        </p>
+                        <p className="text-xs text-red-700 dark:text-red-500 mt-1">
+                          A temporary patient record will be created. Please update patient details after stabilization.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Search Results */}
-              {searchLoading && (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  <span className="ml-2 text-sm text-muted-foreground">Searching patients...</span>
-                </div>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="emergency-gender">
+                        Patient Gender <span className="text-red-600">*</span>
+                      </Label>
+                      <Select
+                        value={emergencyPatient.gender}
+                        onValueChange={(value) =>
+                          setEmergencyPatient({ ...emergencyPatient, gender: value })
+                        }
+                      >
+                        <SelectTrigger id="emergency-gender">
+                          <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="other">Other/Unknown</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="emergency-age">Estimated Age (years)</Label>
+                      <Input
+                        id="emergency-age"
+                        type="number"
+                        min="0"
+                        max="150"
+                        placeholder="e.g., 45"
+                        value={emergencyPatient.estimatedAge}
+                        onChange={(e) =>
+                          setEmergencyPatient({ ...emergencyPatient, estimatedAge: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="emergency-description">Brief Description</Label>
+                      <Textarea
+                        id="emergency-description"
+                        placeholder="Brief description of emergency case, injuries, or condition..."
+                        value={emergencyPatient.briefDescription}
+                        onChange={(e) =>
+                          setEmergencyPatient({ ...emergencyPatient, briefDescription: e.target.value })
+                        }
+                        rows={3}
+                      />
+                    </div>
+
+                    <Button
+                      onClick={handleEmergencyProceed}
+                      disabled={!emergencyPatient.gender}
+                      className="w-full"
+                      size="lg"
+                    >
+                      <ChevronRight className="mr-2 h-4 w-4" />
+                      Proceed to Registration
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Search Input */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      ref={searchInputRef}
+                      placeholder="Search by patient name or CHI number..."
+                      value={searchQuery}
+                      onChange={(e) => handleSearchChange(e.target.value)}
+                      className="pl-9 h-11"
+                      autoFocus
+                    />
+                    {searchLoading && (
+                      <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                </>
               )}
 
-              {!searchLoading && hasSearched && searchResults.length > 0 && (
+                  {/* Search Results */}
+                  {searchLoading && (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      <span className="ml-2 text-sm text-muted-foreground">Searching patients...</span>
+                    </div>
+                  )}
+
+                  {!searchLoading && hasSearched && searchResults.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
                     {searchResults.length} patient{searchResults.length !== 1 ? 's' : ''} found
@@ -421,13 +604,15 @@ export default function WalkInRegistrationPage() {
                 </div>
               )}
 
-              {!hasSearched && !searchLoading && (
-                <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <User className="h-10 w-10 text-muted-foreground mb-3" />
-                  <p className="text-sm text-muted-foreground">
-                    Start typing to search for a patient
-                  </p>
-                </div>
+                  {!hasSearched && !searchLoading && (
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                      <User className="h-10 w-10 text-muted-foreground mb-3" />
+                      <p className="text-sm text-muted-foreground">
+                        Start typing to search for a patient
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </CardContent>
@@ -435,7 +620,7 @@ export default function WalkInRegistrationPage() {
       )}
 
       {/* Step 2: Quick Appointment Creation */}
-      {currentStep === 2 && selectedPatient && (
+      {currentStep === 2 && (selectedPatient || isEmergencyMode) && (
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Main form - left 2 columns */}
           <div className="lg:col-span-2 space-y-6">
@@ -443,42 +628,91 @@ export default function WalkInRegistrationPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <User className="h-5 w-5" />
-                  Selected Patient
+                  {isEmergencyMode ? (
+                    <>
+                      <Siren className="h-5 w-5 text-red-600" />
+                      Emergency Patient
+                    </>
+                  ) : (
+                    <>
+                      <User className="h-5 w-5" />
+                      Selected Patient
+                    </>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                      <User className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-lg font-semibold">
-                        {selectedPatient.firstName} {selectedPatient.lastName}
-                      </p>
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                        <span className="font-mono">{selectedPatient.chiNumber}</span>
-                        <span>
-                          DOB: {formatDateForDisplay(selectedPatient.dateOfBirth)}
-                        </span>
-                        <Badge variant="outline" className="capitalize text-xs">
-                          {selectedPatient.gender}
-                        </Badge>
+                {isEmergencyMode ? (
+                  <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-600/10">
+                          <Siren className="h-6 w-6 text-red-600" />
+                        </div>
+                        <div>
+                          <p className="text-lg font-semibold text-red-900 dark:text-red-400">
+                            A&E Emergency Case
+                          </p>
+                          <div className="flex items-center gap-3 text-sm text-red-700 dark:text-red-500">
+                            <Badge variant="outline" className="capitalize text-xs border-red-300">
+                              {emergencyPatient.gender || 'Unknown'}
+                            </Badge>
+                            {emergencyPatient.estimatedAge && (
+                              <span>Est. Age: {emergencyPatient.estimatedAge}</span>
+                            )}
+                          </div>
+                          {emergencyPatient.briefDescription && (
+                            <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                              {emergencyPatient.briefDescription}
+                            </p>
+                          )}
+                        </div>
                       </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleChangePatient}
+                        className="gap-1"
+                      >
+                        <X className="h-4 w-4" />
+                        Change
+                      </Button>
                     </div>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleChangePatient}
-                    className="gap-1"
-                  >
-                    <X className="h-4 w-4" />
-                    Change
-                  </Button>
-                </div>
+                ) : (
+                  <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                        <User className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-lg font-semibold">
+                          {selectedPatient!.firstName} {selectedPatient!.lastName}
+                        </p>
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                          <span className="font-mono">{selectedPatient!.chiNumber}</span>
+                          <span>
+                            DOB: {formatDateForDisplay(selectedPatient!.dateOfBirth)}
+                          </span>
+                          <Badge variant="outline" className="capitalize text-xs">
+                            {selectedPatient!.gender}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleChangePatient}
+                      className="gap-1"
+                    >
+                      <X className="h-4 w-4" />
+                      Change
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -639,19 +873,50 @@ export default function WalkInRegistrationPage() {
                 </div>
 
                 {/* Summary */}
-                <div className="mt-4 rounded-lg border bg-muted/50 p-3 space-y-2 text-sm">
+                <div className={`mt-4 rounded-lg border p-3 space-y-2 text-sm ${
+                  isEmergencyMode
+                    ? 'border-red-200 bg-red-50 dark:bg-red-950/20'
+                    : 'bg-muted/50'
+                }`}>
                   <p className="font-medium text-xs uppercase text-muted-foreground">
-                    Walk-in Summary
+                    {isEmergencyMode ? 'A&E Emergency Summary' : 'Walk-in Summary'}
                   </p>
                   <div className="space-y-1">
-                    <p>
-                      <span className="text-muted-foreground">Patient:</span>{' '}
-                      {selectedPatient.firstName} {selectedPatient.lastName}
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">CHI:</span>{' '}
-                      <span className="font-mono">{selectedPatient.chiNumber}</span>
-                    </p>
+                    {isEmergencyMode ? (
+                      <>
+                        <p>
+                          <span className="text-muted-foreground">Patient:</span>{' '}
+                          Emergency Case (John Doe)
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">Gender:</span>{' '}
+                          <span className="capitalize">{emergencyPatient.gender || 'Unknown'}</span>
+                        </p>
+                        {emergencyPatient.estimatedAge && (
+                          <p>
+                            <span className="text-muted-foreground">Est. Age:</span>{' '}
+                            {emergencyPatient.estimatedAge} years
+                          </p>
+                        )}
+                        {emergencyPatient.briefDescription && (
+                          <p>
+                            <span className="text-muted-foreground">Description:</span>{' '}
+                            {emergencyPatient.briefDescription}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <p>
+                          <span className="text-muted-foreground">Patient:</span>{' '}
+                          {selectedPatient!.firstName} {selectedPatient!.lastName}
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">CHI:</span>{' '}
+                          <span className="font-mono">{selectedPatient!.chiNumber}</span>
+                        </p>
+                      </>
+                    )}
                     <p>
                       <span className="text-muted-foreground">Type:</span> Consultation
                     </p>
@@ -674,8 +939,8 @@ export default function WalkInRegistrationPage() {
                         {departments.find((d) => d.id === selectedDepartment)?.name || '-'}
                       </p>
                     )}
-                    <Badge variant="info" className="mt-1">
-                      Auto-assign enabled
+                    <Badge variant={isEmergencyMode ? 'destructive' : 'default'} className="mt-1">
+                      {isEmergencyMode ? 'A&E Emergency' : 'Auto-assign enabled'}
                     </Badge>
                   </div>
                 </div>

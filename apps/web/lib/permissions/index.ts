@@ -77,6 +77,7 @@ export const NAV_ITEMS = {
 
   // Appointments
   APPOINTMENTS: 'appointments',
+  APPOINTMENT_QUEUE: 'appointment-queue',
 
   // Ward View
   WARD_VIEW: 'ward-view',
@@ -116,6 +117,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, NavItemId[]> = {
     NAV_ITEMS.EMERGENCY_CARE,
     NAV_ITEMS.CONTINUED_CARE,
     NAV_ITEMS.APPOINTMENTS,
+    NAV_ITEMS.APPOINTMENT_QUEUE,
     NAV_ITEMS.WARD_VIEW,
     NAV_ITEMS.WALK_IN,
     NAV_ITEMS.HELPDESK,
@@ -131,6 +133,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, NavItemId[]> = {
     NAV_ITEMS.EMERGENCY_CARE,
     NAV_ITEMS.CONTINUED_CARE,
     NAV_ITEMS.APPOINTMENTS,
+    NAV_ITEMS.APPOINTMENT_QUEUE,
     NAV_ITEMS.WARD_VIEW,
     NAV_ITEMS.WALK_IN,
     NAV_ITEMS.HELPDESK,
@@ -145,6 +148,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, NavItemId[]> = {
     NAV_ITEMS.EMERGENCY_CARE,
     NAV_ITEMS.CONTINUED_CARE,
     NAV_ITEMS.APPOINTMENTS,
+    NAV_ITEMS.APPOINTMENT_QUEUE,
     NAV_ITEMS.WARD_VIEW,
     NAV_ITEMS.WALK_IN,
     NAV_ITEMS.HELPDESK,
@@ -260,6 +264,20 @@ export function canPrescribe(role: string | undefined): boolean {
     ROLES.PRESCRIBER,
   ];
   return prescriberRoles.includes(role as UserRole);
+}
+
+/**
+ * Check if user is a clinician (can see and act on appointments)
+ */
+export function isClinician(role: string | undefined): boolean {
+  const clinicianRoles: UserRole[] = [
+    ROLES.DOCTOR,
+    ROLES.CONSULTANT,
+    ROLES.NURSE,
+    ROLES.HOSPITAL_PHARMACIST,
+    ROLES.PRESCRIBER,
+  ];
+  return clinicianRoles.includes(role as UserRole);
 }
 
 /**

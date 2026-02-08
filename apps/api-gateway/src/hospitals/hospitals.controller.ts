@@ -68,32 +68,8 @@ export class HospitalsController {
     return this.hospitalsService.getStats(authHeader);
   }
 
-  @Get(':id')
-  async findOneHospital(
-    @Param('id') id: string,
-    @Headers('authorization') authHeader: string,
-  ) {
-    return this.hospitalsService.findOneHospital(id, authHeader);
-  }
-
-  @Patch(':id')
-  async updateHospital(
-    @Param('id') id: string,
-    @Body() dto: Record<string, any>,
-    @Headers('authorization') authHeader: string,
-  ) {
-    return this.hospitalsService.updateHospital(id, dto, authHeader);
-  }
-
-  @Delete(':id')
-  async deleteHospital(
-    @Param('id') id: string,
-    @Headers('authorization') authHeader: string,
-  ) {
-    return this.hospitalsService.deleteHospital(id, authHeader);
-  }
-
   // ==================== Departments ====================
+  // IMPORTANT: Department routes BEFORE generic :id route to avoid conflicts
 
   @Post(':hospitalId/departments')
   async createDepartment(
@@ -209,5 +185,33 @@ export class HospitalsController {
     @Headers('authorization') authHeader: string,
   ) {
     return this.hospitalsService.deleteBed(wardId, bedId, authHeader);
+  }
+
+  // ==================== Generic Hospital Routes ====================
+  // IMPORTANT: These generic :id routes are placed LAST to avoid route conflicts
+
+  @Get(':id')
+  async findOneHospital(
+    @Param('id') id: string,
+    @Headers('authorization') authHeader: string,
+  ) {
+    return this.hospitalsService.findOneHospital(id, authHeader);
+  }
+
+  @Patch(':id')
+  async updateHospital(
+    @Param('id') id: string,
+    @Body() dto: Record<string, any>,
+    @Headers('authorization') authHeader: string,
+  ) {
+    return this.hospitalsService.updateHospital(id, dto, authHeader);
+  }
+
+  @Delete(':id')
+  async deleteHospital(
+    @Param('id') id: string,
+    @Headers('authorization') authHeader: string,
+  ) {
+    return this.hospitalsService.deleteHospital(id, authHeader);
   }
 }

@@ -45,9 +45,15 @@ export default function PatientSearchPage() {
   const [totalResults, setTotalResults] = useState(0);
   const [validationError, setValidationError] = useState('');
 
+  // Check if all search fields are filled
+  const allFieldsFilled =
+    filters.chiNumber.trim() !== '' &&
+    filters.firstName.trim() !== '' &&
+    filters.lastName.trim() !== '' &&
+    filters.dateOfBirth.trim() !== '';
+
   // Count how many search parameters are filled
   const filledFiltersCount = Object.values(filters).filter(v => v.trim() !== '').length;
-  const hasFilters = filledFiltersCount > 0;
 
   // Calculate match score for a patient based on search criteria
   const calculateMatchScore = (patient: Patient): number => {
@@ -102,9 +108,9 @@ export default function PatientSearchPage() {
   };
 
   const handleSearch = async () => {
-    // Validate at least one parameter
-    if (!hasFilters) {
-      setValidationError('Please enter at least one search parameter');
+    // Validate all parameters are filled
+    if (!allFieldsFilled) {
+      setValidationError('Please fill in all search fields (CHI Number, First Name, Last Name, and Date of Birth)');
       return;
     }
 
@@ -217,7 +223,7 @@ export default function PatientSearchPage() {
             Search Criteria
           </CardTitle>
           <CardDescription>
-            Enter one or more search criteria to find patients
+            All fields are required to search for patients
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -290,7 +296,7 @@ export default function PatientSearchPage() {
 
           {/* Action Buttons */}
           <div className="flex gap-3 mt-6">
-            <Button onClick={handleSearch} disabled={isLoading}>
+            <Button onClick={handleSearch} disabled={isLoading || !allFieldsFilled}>
               {isLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -303,6 +309,11 @@ export default function PatientSearchPage() {
               Reset
             </Button>
           </div>
+          {filledFiltersCount > 0 && !allFieldsFilled && (
+            <p className="text-sm text-muted-foreground mt-2">
+              {filledFiltersCount} of 4 fields filled. All fields are required to search.
+            </p>
+          )}
         </CardContent>
       </Card>
 

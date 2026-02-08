@@ -216,7 +216,7 @@ function getQuickActionsForRole(role: string | undefined): QuickActionConfig[] {
     case ROLES.SUPER_ADMIN:
     case ROLES.CLINICAL_ADMIN:
       return [
-        { label: 'Manage Users', href: '/users', icon: Users, color: 'primary' },
+        { label: 'Manage Users', href: '/admin/users', icon: Users, color: 'primary' },
         { label: 'Hospitals', href: '/admin/hospitals', icon: Building2, color: 'success' },
         { label: 'Audit Trails', href: '/admin/audit', icon: ShieldCheck, color: 'warning' },
         { label: 'Settings', href: '/admin/settings', icon: MonitorCheck, color: 'default' },
@@ -224,9 +224,9 @@ function getQuickActionsForRole(role: string | undefined): QuickActionConfig[] {
     case ROLES.DOCTOR:
     case ROLES.CONSULTANT:
       return [
-        { label: 'New Patient', href: '/patients/new', icon: UserPlus, color: 'primary' },
+        { label: 'New Patient', href: '/patients/add', icon: UserPlus, color: 'primary' },
         { label: 'Schedule', href: '/appointments/new', icon: Calendar, color: 'success' },
-        { label: 'Prescribe', href: '/prescriptions/new', icon: ClipboardList, color: 'warning' },
+        { label: 'Patients', href: '/patients', icon: Users, color: 'warning' },
         { label: 'Imaging', href: '/clinical/imaging', icon: MonitorCheck, color: 'default' },
       ];
     case ROLES.NURSE:
@@ -238,33 +238,33 @@ function getQuickActionsForRole(role: string | undefined): QuickActionConfig[] {
       ];
     case ROLES.HOSPITAL_PHARMACIST:
       return [
-        { label: 'Review Rx', href: '/prescriptions', icon: ClipboardCheck, color: 'primary' },
-        { label: 'CD Register', href: '/clinical/controlled-drugs', icon: ShieldCheck, color: 'success' },
-        { label: 'Discharge Rx', href: '/discharge/pharmacy', icon: FileText, color: 'warning' },
-        { label: 'Patients', href: '/patients', icon: Users, color: 'default' },
-      ];
-    case ROLES.PRESCRIBER:
-      return [
-        { label: 'New Prescription', href: '/prescriptions/new', icon: Pill, color: 'primary' },
+        { label: 'Discharge Rx', href: '/discharge/pharmacy', icon: FileText, color: 'primary' },
         { label: 'CD Register', href: '/clinical/controlled-drugs', icon: ShieldCheck, color: 'success' },
         { label: 'Patients', href: '/patients', icon: Users, color: 'warning' },
         { label: 'Appointments', href: '/appointments', icon: Calendar, color: 'default' },
+      ];
+    case ROLES.PRESCRIBER:
+      return [
+        { label: 'CD Register', href: '/clinical/controlled-drugs', icon: ShieldCheck, color: 'primary' },
+        { label: 'Patients', href: '/patients', icon: Users, color: 'success' },
+        { label: 'Appointments', href: '/appointments', icon: Calendar, color: 'warning' },
+        { label: 'Imaging', href: '/clinical/imaging', icon: MonitorCheck, color: 'default' },
       ];
     case ROLES.PHARMACY_TECHNICIAN:
     case ROLES.PHARMACY_SUPPORT_WORKER:
     case ROLES.PHARMACY_SUPPORT_MANAGER:
       return [
         { label: 'Dispensing', href: '/discharge/pharmacy', icon: Package, color: 'primary' },
-        { label: 'Stock Check', href: '/inventory', icon: ListChecks, color: 'success' },
+        { label: 'CD Register', href: '/clinical/controlled-drugs', icon: ShieldCheck, color: 'success' },
         { label: 'Patients', href: '/patients', icon: Users, color: 'warning' },
         { label: 'Helpdesk', href: '/business/helpdesk', icon: Syringe, color: 'default' },
       ];
     default:
       return [
-        { label: 'New Patient', href: '/patients/new', icon: UserPlus, color: 'primary' },
+        { label: 'New Patient', href: '/patients/add', icon: UserPlus, color: 'primary' },
         { label: 'Schedule', href: '/appointments/new', icon: Calendar, color: 'success' },
-        { label: 'Prescribe', href: '/prescriptions/new', icon: ClipboardList, color: 'warning' },
-        { label: 'Consult', href: '/consultations/new', icon: Stethoscope, color: 'default' },
+        { label: 'Patients', href: '/patients', icon: Users, color: 'warning' },
+        { label: 'Emergency', href: '/clinical/emergency', icon: AlertCircle, color: 'default' },
       ];
   }
 }

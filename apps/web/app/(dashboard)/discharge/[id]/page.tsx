@@ -11,6 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SnomedSingleAutocomplete } from '@/components/ui/snomed-single-autocomplete';
+import { COMMON_MEDICATIONS } from '@/lib/constants/snomed';
 import {
   Table,
   TableBody,
@@ -539,10 +541,11 @@ export default function DischargeDetailPage({ params }: DischargeDetailPageProps
                     {medications.map((med, index) => (
                       <TableRow key={index}>
                         <TableCell>
-                          <Input
-                            placeholder="Name"
+                          <SnomedSingleAutocomplete
+                            concepts={COMMON_MEDICATIONS}
                             value={med.name}
-                            onChange={(e) => handleMedicationChange(index, 'name', e.target.value)}
+                            onChange={(value) => handleMedicationChange(index, 'name', value)}
+                            placeholder="Search medications..."
                           />
                         </TableCell>
                         <TableCell>

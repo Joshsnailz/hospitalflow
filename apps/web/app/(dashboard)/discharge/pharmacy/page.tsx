@@ -10,6 +10,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { SnomedSingleAutocomplete } from '@/components/ui/snomed-single-autocomplete';
+import { COMMON_MEDICATIONS } from '@/lib/constants/snomed';
 import {
   Table,
   TableBody,
@@ -380,12 +382,13 @@ export default function PharmacyDischargePage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label className="text-xs">Name</Label>
-                        <Input
-                          placeholder="Medication name"
+                        <SnomedSingleAutocomplete
+                          concepts={COMMON_MEDICATIONS}
                           value={med.name}
-                          onChange={(e) =>
-                            handleMedicationChange(index, 'name', e.target.value)
+                          onChange={(value) =>
+                            handleMedicationChange(index, 'name', value)
                           }
+                          placeholder="Search medications..."
                         />
                       </div>
                       <div className="space-y-1">

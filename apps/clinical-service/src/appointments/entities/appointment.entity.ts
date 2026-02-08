@@ -28,11 +28,22 @@ export type AppointmentStatus =
 
 export type AppointmentPriority = 'urgent' | 'high' | 'normal' | 'low';
 
+export type AssignmentStatus =
+  | 'pending'
+  | 'assigned'
+  | 'accepted'
+  | 'rejected'
+  | 'referred'
+  | 'completed';
+
 @Entity('appointments')
 @Index(['patientId'])
 @Index(['doctorId'])
 @Index(['scheduledDate'])
 @Index(['status'])
+@Index(['assignmentStatus', 'queuePosition'])
+@Index(['doctorId', 'assignmentStatus'])
+@Index(['hospitalId', 'assignmentStatus'])
 export class AppointmentEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -46,11 +57,11 @@ export class AppointmentEntity {
   @Column({ name: 'patient_name', type: 'varchar', length: 200 })
   patientName: string;
 
-  @Column({ name: 'doctor_id', type: 'uuid' })
-  doctorId: string;
+  @Column({ name: 'doctor_id', type: 'uuid', nullable: true })
+  doctorId: string | null;
 
-  @Column({ name: 'doctor_name', type: 'varchar', length: 200 })
-  doctorName: string;
+  @Column({ name: 'doctor_name', type: 'varchar', length: 200, nullable: true })
+  doctorName: string | null;
 
   @Column({ name: 'hospital_id', type: 'uuid' })
   hospitalId: string;
@@ -87,6 +98,36 @@ export class AppointmentEntity {
 
   @Column({ name: 'auto_assigned', type: 'boolean', default: false })
   autoAssigned: boolean;
+
+  @Column({ name: 'assignment_status', type: 'varchar', length: 20, default: 'pending' })
+  assignmentStatus: AssignmentStatus;
+
+  @Column({ name: 'queue_position', type: 'int', nullable: true })
+  queuePosition: number | null;
+
+  @Column({ name: 'assigned_at', type: 'timestamp', nullable: true })
+  assignedAt: Date | null;
+
+  @Column({ name: 'accepted_at', type: 'timestamp', nullable: true })
+  acceptedAt: Date | null;
+
+  @Column({ name: 'rejected_at', type: 'timestamp', nullable: true })
+  rejectedAt: Date | null;
+
+  @Column({ name: 'rejection_reason', type: 'varchar', length: 500, nullable: true })
+  rejectionReason: string | null;
+
+  @Column({ name: 'referred_to_doctor_id', type: 'uuid', nullable: true })
+  referredToDoctorId: string | null;
+
+  @Column({ name: 'referred_to_doctor_name', type: 'varchar', length: 255, nullable: true })
+  referredToDoctorName: string | null;
+
+  @Column({ name: 'referred_at', type: 'timestamp', nullable: true })
+  referredAt: Date | null;
+
+  @Column({ name: 'referral_notes', type: 'varchar', length: 500, nullable: true })
+  referralNotes: string | null;
 
   @Column({ name: 'created_by', type: 'uuid', nullable: true })
   createdBy: string | null;

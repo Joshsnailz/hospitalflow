@@ -37,7 +37,7 @@ export class EncountersService {
 
     this.eventPublisher.publishAuditLog({
       userId,
-      action: 'encounter.created',
+      action: 'CREATE',
       resource: 'encounter',
       resourceId: saved.id,
       status: 'success',
@@ -130,7 +130,7 @@ export class EncountersService {
 
     this.eventPublisher.publishAuditLog({
       userId,
-      action: 'encounter.updated',
+      action: 'UPDATE',
       resource: 'encounter',
       resourceId: saved.id,
       status: 'success',
@@ -184,7 +184,7 @@ export class EncountersService {
 
     this.eventPublisher.publishAuditLog({
       userId,
-      action: 'clinical_note.created',
+      action: 'CREATE',
       resource: 'clinical_note',
       resourceId: saved.id,
       status: 'success',
@@ -225,7 +225,7 @@ export class EncountersService {
 
     this.eventPublisher.publishAuditLog({
       userId,
-      action: 'encounter.bed_assigned',
+      action: 'UPDATE',
       resource: 'encounter',
       resourceId: saved.id,
       status: 'success',

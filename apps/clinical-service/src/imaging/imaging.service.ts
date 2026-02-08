@@ -33,7 +33,7 @@ export class ImagingService {
 
     this.eventPublisher.publishAuditLog({
       userId,
-      action: 'imaging_request.created',
+      action: 'CREATE',
       resource: 'imaging_request',
       resourceId: saved.id,
       status: 'success',
@@ -117,7 +117,7 @@ export class ImagingService {
     const saved = await this.imagingRequestRepository.save(request);
 
     this.eventPublisher.publishAuditLog({
-      action: 'imaging_request.updated',
+      action: 'UPDATE',
       resource: 'imaging_request',
       resourceId: saved.id,
       status: 'success',

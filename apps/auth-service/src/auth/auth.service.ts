@@ -144,6 +144,31 @@ export class AuthService {
 
     const savedUser = await this.userRepository.save(user);
 
+    // Publish user.created event for other services to sync
+    await this.eventPublisher.publishUserCreated({
+      userId: savedUser.id,
+      email: savedUser.email,
+      firstName: savedUser.firstName,
+      lastName: savedUser.lastName,
+      role: savedUser.role,
+      phoneNumber: savedUser.phoneNumber || undefined,
+      isActive: savedUser.isActive,
+      mustChangePassword: savedUser.mustChangePassword,
+      createdAt: savedUser.createdAt.toISOString(),
+    });
+
+    // Publish audit log
+    await this.eventPublisher.publishAuditLog({
+      userId: savedUser.id,
+      userEmail: savedUser.email,
+      action: 'REGISTER',
+      resource: 'user',
+      resourceId: savedUser.id,
+      status: 'success',
+    });
+
+    this.logger.log(`User registered: ${savedUser.email} (${savedUser.id})`);
+
     return {
       id: savedUser.id,
       email: savedUser.email,
@@ -209,7 +234,7 @@ export class AuthService {
 
     // Publish audit log for user creation
     await this.eventPublisher.publishAuditLog({
-      action: 'CREATE_USER',
+      action: 'CREATE',
       resource: 'user',
       resourceId: savedUser.id,
       status: 'success',
@@ -348,7 +373,7 @@ export class AuthService {
 
     // Publish audit log
     await this.eventPublisher.publishAuditLog({
-      action: 'ACTIVATE_USER',
+      action: 'UPDATE',
       resource: 'user',
       resourceId: user.id,
       status: 'success',
@@ -375,7 +400,7 @@ export class AuthService {
 
     // Publish audit log
     await this.eventPublisher.publishAuditLog({
-      action: 'DEACTIVATE_USER',
+      action: 'UPDATE',
       resource: 'user',
       resourceId: user.id,
       status: 'success',
