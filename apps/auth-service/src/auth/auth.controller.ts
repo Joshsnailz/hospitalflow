@@ -146,6 +146,19 @@ export class AuthController {
     };
   }
 
+  @Get('clinicians')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all active clinicians (accessible to all authenticated users)' })
+  @ApiResponse({ status: 200, description: 'Clinicians retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getClinicians() {
+    const clinicians = await this.authService.findClinicians();
+    return {
+      success: true,
+      data: clinicians,
+    };
+  }
+
   // Admin User Management Endpoints
 
   @Post('admin/users')

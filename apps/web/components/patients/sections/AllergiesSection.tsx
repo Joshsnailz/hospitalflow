@@ -24,6 +24,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { patientsApi } from '@/lib/api/patients';
 import type { Allergy, CreateAllergyDto, AllergyType, AllergySeverity, AllergyStatus } from '@/lib/types/patient';
 import { Plus, Edit, Trash2, Loader2, AlertTriangle } from 'lucide-react';
+import { SnomedSearchInput } from '@/components/shared/snomed-search-input';
 
 interface AllergiesSectionProps {
   patientId: string;
@@ -228,10 +229,12 @@ export function AllergiesSection({ patientId, initialData, onCountChange }: Alle
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <Label>Allergen Name *</Label>
-              <Input
+              <SnomedSearchInput
                 value={formData.allergenName}
-                onChange={(e) => setFormData({ ...formData, allergenName: e.target.value })}
-                placeholder="e.g., Penicillin, Peanuts"
+                onValueChange={(value) => setFormData({ ...formData, allergenName: value })}
+                searchType="allergens"
+                allowFreeText
+                placeholder="Search allergens..."
               />
             </div>
             <div className="grid grid-cols-2 gap-4">

@@ -155,21 +155,10 @@ export class EventConsumerService implements OnModuleInit, OnModuleDestroy {
       await queryRunner.startTransaction();
 
       try {
-        // Update patientName in appointments
-        if (changes.firstName || changes.lastName) {
-          await queryRunner.query(
-            `UPDATE appointments SET patient_name = $1 WHERE patient_id = $2`,
-            [fullName, patientId],
-          );
-        }
-
-        // Update patientChi across all entities that store it
+        // Update patientChi across all clinical entities that store it
+        // (appointments are handled by the appointment-service's own event consumer)
         if (changes.chiNumber) {
           const newChi = chiNumber;
-          await queryRunner.query(
-            `UPDATE appointments SET patient_chi = $1 WHERE patient_id = $2`,
-            [newChi, patientId],
-          );
           await queryRunner.query(
             `UPDATE encounters SET patient_chi = $1 WHERE patient_id = $2`,
             [newChi, patientId],
@@ -213,7 +202,8 @@ export class EventConsumerService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * When a patient is deactivated, cancel their pending appointments.
+   * When a patient is deactivated, log the event.
+   * Appointment cancellation is handled by the appointment-service's own event consumer.
    */
   private async handlePatientDeactivated(msg: amqp.ConsumeMessage | null): Promise<void> {
     if (!msg) return;
@@ -223,14 +213,9 @@ export class EventConsumerService implements OnModuleInit, OnModuleDestroy {
       const { patientId } = event.payload;
       this.logger.log(`Received patient.deactivated event for patient ${patientId}`);
 
-      // Cancel all scheduled/confirmed appointments for this patient
-      await this.dataSource.query(
-        `UPDATE appointments SET status = 'cancelled', notes = COALESCE(notes, '') || ' [Auto-cancelled: patient deactivated]'
-         WHERE patient_id = $1 AND status IN ('scheduled', 'confirmed')`,
-        [patientId],
-      );
+      // Appointment cancellation is now handled by the appointment-service
+      // Clinical-service only needs to handle its own entities if needed
 
-      this.logger.log(`Cancelled pending appointments for deactivated patient ${patientId}`);
       this.channel?.ack(msg);
     } catch (error) {
       this.logger.error('Error processing patient.deactivated event:', error);
@@ -268,19 +253,21 @@ export class EventConsumerService implements OnModuleInit, OnModuleDestroy {
       if (newFirstName && newLastName) {
         fullName = `${newFirstName} ${newLastName}`;
       } else {
-        // Try to get existing name from an appointment to derive the full name
+        // Try to get existing name from an emergency visit to derive the full name
         const existing = await this.dataSource.query(
-          `SELECT doctor_name FROM appointments WHERE doctor_id = $1 LIMIT 1`,
+          `SELECT attending_doctor_name FROM emergency_visits WHERE attending_doctor_id = $1 LIMIT 1`,
           [userId],
         );
 
         if (existing.length > 0) {
-          const currentName = existing[0].doctor_name;
-          const parts = currentName.split(' ');
-          if (newFirstName) {
-            fullName = `${newFirstName} ${parts.slice(1).join(' ')}`;
-          } else if (newLastName) {
-            fullName = `${parts[0]} ${newLastName}`;
+          const currentName = existing[0].attending_doctor_name;
+          if (currentName) {
+            const parts = currentName.split(' ');
+            if (newFirstName) {
+              fullName = `${newFirstName} ${parts.slice(1).join(' ')}`;
+            } else if (newLastName) {
+              fullName = `${parts[0]} ${newLastName}`;
+            }
           }
         }
       }
@@ -291,11 +278,7 @@ export class EventConsumerService implements OnModuleInit, OnModuleDestroy {
         await queryRunner.startTransaction();
 
         try {
-          // Update doctorName in appointments
-          await queryRunner.query(
-            `UPDATE appointments SET doctor_name = $1 WHERE doctor_id = $2`,
-            [fullName, userId],
-          );
+          // Appointment doctor_name updates are handled by the appointment-service's own event consumer
 
           // Update attendingDoctorName in emergency visits
           await queryRunner.query(
@@ -369,8 +352,8 @@ export class EventConsumerService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * When a user (doctor) is deactivated, reassign their pending appointments
-   * or cancel them if no reassignment is possible.
+   * When a user (doctor) is deactivated, log the event.
+   * Appointment cancellation is handled by the appointment-service's own event consumer.
    */
   private async handleUserDeactivated(msg: amqp.ConsumeMessage | null): Promise<void> {
     if (!msg) return;
@@ -380,14 +363,8 @@ export class EventConsumerService implements OnModuleInit, OnModuleDestroy {
       const { userId } = event.payload;
       this.logger.log(`Received user.deactivated event for user ${userId}`);
 
-      // Cancel all scheduled appointments for this doctor
-      await this.dataSource.query(
-        `UPDATE appointments SET status = 'cancelled', notes = COALESCE(notes, '') || ' [Auto-cancelled: doctor deactivated]'
-         WHERE doctor_id = $1 AND status IN ('scheduled', 'confirmed')`,
-        [userId],
-      );
+      // Appointment cancellation is now handled by the appointment-service
 
-      this.logger.log(`Cancelled pending appointments for deactivated doctor ${userId}`);
       this.channel?.ack(msg);
     } catch (error) {
       this.logger.error('Error processing user.deactivated event:', error);

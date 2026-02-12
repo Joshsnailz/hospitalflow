@@ -10,6 +10,7 @@ export const ROLES = {
   // Clinical
   CONSULTANT: 'consultant',
   DOCTOR: 'doctor',
+  NURSE: 'nurse',
   PRESCRIBER: 'prescriber',
 
   // Pharmacy
@@ -31,6 +32,7 @@ export const ROLE_HIERARCHY: Record<UserRole, number> = {
   [ROLES.CLINICAL_ADMIN]: 90,
   [ROLES.CONSULTANT]: 70,
   [ROLES.DOCTOR]: 60,
+  [ROLES.NURSE]: 55,
   [ROLES.PRESCRIBER]: 50,
   [ROLES.HOSPITAL_PHARMACIST]: 40,
   [ROLES.PHARMACY_SUPPORT_MANAGER]: 35,

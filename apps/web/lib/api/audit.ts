@@ -34,6 +34,32 @@ export interface AuditStatistics {
   uniquePatientsCount: number;
 }
 
+/** Raw response shape from the audit-service (flat pagination fields) */
+interface AuditLogsRawResponse {
+  success: boolean;
+  data: AuditLog[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+/** Raw response shape from the audit-service statistics endpoint */
+interface AuditStatisticsRawResponse {
+  success: boolean;
+  data: {
+    totalAuditLogs: number;
+    totalDataAccessLogs: number;
+    auditLogsByAction: Record<string, number>;
+    auditLogsByStatus: Record<string, number>;
+    dataAccessByType: Record<string, number>;
+    dataAccessBySensitivity: Record<string, number>;
+    emergencyAccessCount: number;
+    uniqueUsersCount: number;
+    uniquePatientsAccessedCount: number;
+  };
+}
+
 export interface AuditLogFilter {
   page?: number;
   limit?: number;
@@ -57,6 +83,39 @@ export interface PaginatedAuditLogs {
   totalPages: number;
 }
 
+/** Normalize the flat paginated response into the nested shape the frontend expects */
+function normalizePaginatedResponse(raw: AuditLogsRawResponse): { success: boolean; data: PaginatedAuditLogs } {
+  return {
+    success: raw.success,
+    data: {
+      data: raw.data,
+      total: raw.total,
+      page: raw.page,
+      limit: raw.limit,
+      totalPages: raw.totalPages,
+    },
+  };
+}
+
+/** Normalize backend statistics field names to frontend interface */
+function normalizeStatistics(raw: AuditStatisticsRawResponse): { success: boolean; data: AuditStatistics } {
+  const s = raw.data;
+  return {
+    success: raw.success,
+    data: {
+      totalAuditLogs: s.totalAuditLogs,
+      totalDataAccessLogs: s.totalDataAccessLogs,
+      logsByAction: s.auditLogsByAction,
+      logsByStatus: s.auditLogsByStatus,
+      logsByAccessType: s.dataAccessByType,
+      logsBySensitivity: s.dataAccessBySensitivity,
+      emergencyAccessCount: s.emergencyAccessCount,
+      uniqueUsersCount: s.uniqueUsersCount,
+      uniquePatientsCount: s.uniquePatientsAccessedCount,
+    },
+  };
+}
+
 export const auditApi = {
   getLogs: async (filters: AuditLogFilter = {}): Promise<{ success: boolean; data: PaginatedAuditLogs }> => {
     const params = new URLSearchParams();
@@ -65,8 +124,8 @@ export const auditApi = {
         params.append(key, String(value));
       }
     });
-    const response = await apiClient.get(`/audit/logs?${params.toString()}`);
-    return response.data;
+    const response = await apiClient.get<AuditLogsRawResponse>(`/audit/logs?${params.toString()}`);
+    return normalizePaginatedResponse(response.data);
   },
 
   getLog: async (id: string): Promise<{ success: boolean; data: AuditLog }> => {
@@ -81,16 +140,16 @@ export const auditApi = {
         params.append(key, String(value));
       }
     });
-    const response = await apiClient.get(`/audit/user/${userId}?${params.toString()}`);
-    return response.data;
+    const response = await apiClient.get<AuditLogsRawResponse>(`/audit/user/${userId}?${params.toString()}`);
+    return normalizePaginatedResponse(response.data);
   },
 
   getStatistics: async (startDate?: string, endDate?: string): Promise<{ success: boolean; data: AuditStatistics }> => {
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
-    const response = await apiClient.get(`/audit/statistics?${params.toString()}`);
-    return response.data;
+    const response = await apiClient.get<AuditStatisticsRawResponse>(`/audit/statistics?${params.toString()}`);
+    return normalizeStatistics(response.data);
   },
 
   getDataAccessLogs: async (filters: AuditLogFilter = {}): Promise<{ success: boolean; data: PaginatedAuditLogs }> => {
@@ -100,7 +159,7 @@ export const auditApi = {
         params.append(key, String(value));
       }
     });
-    const response = await apiClient.get(`/audit/data-access?${params.toString()}`);
-    return response.data;
+    const response = await apiClient.get<AuditLogsRawResponse>(`/audit/data-access?${params.toString()}`);
+    return normalizePaginatedResponse(response.data);
   },
 };

@@ -74,6 +74,19 @@ export class AuthService {
     }
   }
 
+  async getClinicians(authHeader: string) {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get('/auth/clinicians', {
+          headers: { Authorization: authHeader },
+        }),
+      );
+      return response.data;
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
   // Admin user management
   async createUserAdmin(createUserDto: Record<string, any>, authHeader: string) {
     try {

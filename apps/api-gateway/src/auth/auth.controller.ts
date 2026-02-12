@@ -184,6 +184,15 @@ export class AuthController {
     return this.authService.getMe(authHeader);
   }
 
+  @Get('clinicians')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get all active clinicians' })
+  @ApiResponse({ status: 200, description: 'Clinicians retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getClinicians(@Headers('authorization') authHeader: string) {
+    return this.authService.getClinicians(authHeader);
+  }
+
   // Admin User Management
 
   @Post('admin/users')

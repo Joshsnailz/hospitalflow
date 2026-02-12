@@ -40,6 +40,9 @@ import type {
   CreateImagingRequestDto,
 } from '@/lib/types/clinical';
 import { Loader2, ImageIcon, Plus, RefreshCw } from 'lucide-react';
+import { PatientSearchInput } from '@/components/shared/patient-search-input';
+import { Combobox } from '@/components/ui/combobox';
+import { BODY_PARTS } from '@/lib/data/body-parts';
 
 const IMAGING_TYPE_LABELS: Record<ImagingType, string> = {
   xray: 'X-ray',
@@ -249,12 +252,10 @@ export default function ClinicalImagingPage() {
             </DialogHeader>
             <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
               <div className="space-y-2">
-                <Label htmlFor="patientId">Patient ID *</Label>
-                <Input
-                  id="patientId"
-                  placeholder="Search or enter patient ID"
+                <Label>Patient *</Label>
+                <PatientSearchInput
                   value={formData.patientId}
-                  onChange={(e) => handleInputChange('patientId', e.target.value)}
+                  onValueChange={(value) => handleInputChange('patientId', value)}
                 />
               </div>
               <div className="space-y-2">
@@ -276,12 +277,13 @@ export default function ClinicalImagingPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="bodyPart">Body Part *</Label>
-                <Input
-                  id="bodyPart"
-                  placeholder="e.g., Chest, Left Knee, Abdomen"
+                <Label>Body Part *</Label>
+                <Combobox
                   value={formData.bodyPart}
-                  onChange={(e) => handleInputChange('bodyPart', e.target.value)}
+                  onValueChange={(value) => handleInputChange('bodyPart', value)}
+                  options={BODY_PARTS}
+                  allowFreeText
+                  placeholder="Select body part"
                 />
               </div>
               <div className="space-y-2">

@@ -17,6 +17,7 @@ COPY apps/audit-service/package.json apps/audit-service/
 COPY apps/patient-service/package.json apps/patient-service/
 COPY apps/clinical-service/package.json apps/clinical-service/
 COPY apps/hospital-service/package.json apps/hospital-service/
+COPY apps/appointment-service/package.json apps/appointment-service/
 COPY apps/api-gateway/package.json apps/api-gateway/
 COPY apps/web/package.json apps/web/
 COPY packages/ packages/
@@ -52,6 +53,6 @@ RUN apk add --no-cache libc6-compat
 # Copy the entire built workspace from builder
 COPY --from=builder /repo /repo
 
-EXPOSE 3000 3001 3002 3003 3004 3005 3006 3007 3100
+EXPOSE 3000 3001 3002 3003 3004 3005 3006 3007 3008 3100
 
 CMD ["node", "dist/main"]

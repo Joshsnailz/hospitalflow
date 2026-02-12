@@ -5,7 +5,6 @@ import { AuthModule } from './auth/auth.module';
 import { HealthModule } from './health/health.module';
 import { EventsModule } from './events/events.module';
 import { EncountersModule } from './encounters/encounters.module';
-import { AppointmentsModule } from './appointments/appointments.module';
 import { DischargeModule } from './discharge/discharge.module';
 import { ImagingModule } from './imaging/imaging.module';
 import { ControlledDrugsModule } from './controlled-drugs/controlled-drugs.module';
@@ -13,7 +12,6 @@ import { EmergencyModule } from './emergency/emergency.module';
 import { CarePlansModule } from './care-plans/care-plans.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { EncounterEntity, ClinicalNoteEntity } from './encounters/entities';
-import { AppointmentEntity } from './appointments/entities';
 import { DischargeFormEntity } from './discharge/entities';
 import { ImagingRequestEntity } from './imaging/entities';
 import { ControlledDrugEntryEntity } from './controlled-drugs/entities';
@@ -41,7 +39,6 @@ import { CarePlanEntity } from './care-plans/entities';
         entities: [
           EncounterEntity,
           ClinicalNoteEntity,
-          AppointmentEntity,
           DischargeFormEntity,
           ImagingRequestEntity,
           ControlledDrugEntryEntity,
@@ -59,7 +56,6 @@ import { CarePlanEntity } from './care-plans/entities';
     HealthModule,
     EventsModule,
     EncountersModule,
-    AppointmentsModule,
     DischargeModule,
     ImagingModule,
     ControlledDrugsModule,

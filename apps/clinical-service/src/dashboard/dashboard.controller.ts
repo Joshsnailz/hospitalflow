@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Query,
+  Headers,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -30,13 +31,14 @@ export class DashboardController {
   async getStats(
     @CurrentUser('id') userId: string,
     @CurrentUser('role') role: string,
+    @Headers('authorization') authHeader: string,
     @Query('userId') queryUserId?: string,
     @Query('role') queryRole?: string,
   ) {
     const effectiveUserId = queryUserId || userId;
     const effectiveRole = queryRole || role;
 
-    const stats = await this.dashboardService.getAggregatedStats(effectiveUserId, effectiveRole);
+    const stats = await this.dashboardService.getAggregatedStats(effectiveUserId, effectiveRole, authHeader);
     return {
       success: true,
       data: stats,

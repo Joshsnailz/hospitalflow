@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { clinicalApi } from '@/lib/api/clinical';
+import { appointmentsApi } from '@/lib/api/appointments';
 import type {
   Appointment,
   AppointmentStatus,
@@ -242,7 +243,7 @@ export function PatientJourneyTimeline({ patientId }: PatientJourneyTimelineProp
     try {
       const [appointmentsRes, encountersRes, emergencyRes, dischargeRes] =
         await Promise.allSettled([
-          clinicalApi.getPatientAppointments(patientId),
+          appointmentsApi.getPatientAppointments(patientId),
           clinicalApi.getEncountersByPatient(patientId),
           clinicalApi.getEmergencyVisitsByPatient(patientId),
           clinicalApi.getPatientDischargeForms(patientId),
@@ -257,11 +258,11 @@ export function PatientJourneyTimeline({ patientId }: PatientJourneyTimelineProp
           timelineEvents.push({
             id: `appt-${appt.id}`,
             type: 'appointment',
-            date: `${appt.scheduledDate}T${appt.scheduledTime}`,
+            date: appt.scheduledDate,
             status: appt.status,
             summary: appt.reason
-              ? `${formatStatusLabel(appt.type)} — ${appt.reason}`
-              : formatStatusLabel(appt.type),
+              ? `${formatStatusLabel(appt.appointmentType)} — ${appt.reason}`
+              : formatStatusLabel(appt.appointmentType),
             clinician: appt.doctorName || 'Unassigned',
           });
         });

@@ -7,7 +7,20 @@ import type {
   PaginatedUsersResponse,
 } from '../types/user';
 
+export interface Clinician {
+  id: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+}
+
 export const usersApi = {
+  // Get all active clinicians (accessible to all authenticated users)
+  getClinicians: async (): Promise<{ success: boolean; data: Clinician[] }> => {
+    const response = await apiClient.get('/api/v1/auth/clinicians');
+    return response.data;
+  },
+
   // Admin user management - uses auth service
   create: async (data: CreateUserDto): Promise<{ success: boolean; data: User & { temporaryPassword: string }; message: string }> => {
     const response = await apiClient.post('/api/v1/auth/admin/users', data);

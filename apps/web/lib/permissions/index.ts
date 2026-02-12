@@ -294,3 +294,36 @@ export function getRoleOptions(): Array<{ value: UserRole; label: string }> {
     label: getRoleDisplayName(role),
   }));
 }
+
+// ============================================
+// APPOINTMENT-SPECIFIC PERMISSIONS
+// ============================================
+
+const ADMIN_ROLES: UserRole[] = [ROLES.SUPER_ADMIN, ROLES.CLINICAL_ADMIN];
+
+const CLINICIAN_ROLES: UserRole[] = [
+  ROLES.CONSULTANT,
+  ROLES.DOCTOR,
+  ROLES.NURSE,
+  ROLES.PRESCRIBER,
+];
+
+export function canCreateAppointments(role: string | undefined): boolean {
+  return ADMIN_ROLES.includes(role as UserRole);
+}
+
+export function canDirectReschedule(role: string | undefined): boolean {
+  return ADMIN_ROLES.includes(role as UserRole);
+}
+
+export function canDirectCancel(role: string | undefined): boolean {
+  return ADMIN_ROLES.includes(role as UserRole);
+}
+
+export function canResolveRequests(role: string | undefined): boolean {
+  return ADMIN_ROLES.includes(role as UserRole);
+}
+
+export function isClinician(role: string | undefined): boolean {
+  return CLINICIAN_ROLES.includes(role as UserRole);
+}

@@ -88,126 +88,6 @@ export class ClinicalService {
     }
   }
 
-  // ==================== Appointments ====================
-
-  async createAppointment(dto: Record<string, any>, authHeader: string) {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.post('/appointments', dto, {
-          headers: { Authorization: authHeader },
-        }),
-      );
-      return response.data;
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  async findAllAppointments(query: Record<string, any>, authHeader: string) {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.get('/appointments', {
-          headers: { Authorization: authHeader },
-          params: query,
-        }),
-      );
-      return response.data;
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  async findOneAppointment(id: string, authHeader: string) {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.get(`/appointments/${id}`, {
-          headers: { Authorization: authHeader },
-        }),
-      );
-      return response.data;
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  async updateAppointment(id: string, dto: Record<string, any>, authHeader: string) {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.patch(`/appointments/${id}`, dto, {
-          headers: { Authorization: authHeader },
-        }),
-      );
-      return response.data;
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  async cancelAppointment(id: string, dto: Record<string, any>, authHeader: string) {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.post(`/appointments/${id}/cancel`, dto, {
-          headers: { Authorization: authHeader },
-        }),
-      );
-      return response.data;
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  async rescheduleAppointment(id: string, dto: Record<string, any>, authHeader: string) {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.post(`/appointments/${id}/reschedule`, dto, {
-          headers: { Authorization: authHeader },
-        }),
-      );
-      return response.data;
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  async referAppointment(id: string, dto: Record<string, any>, authHeader: string) {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.post(`/appointments/${id}/refer`, dto, {
-          headers: { Authorization: authHeader },
-        }),
-      );
-      return response.data;
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  async getUpcomingAppointments(doctorId: string, authHeader: string) {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.get(`/appointments/doctor/${doctorId}/upcoming`, {
-          headers: { Authorization: authHeader },
-        }),
-      );
-      return response.data;
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  async getPatientAppointments(patientId: string, authHeader: string) {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.get(`/appointments/patient/${patientId}`, {
-          headers: { Authorization: authHeader },
-        }),
-      );
-      return response.data;
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
   // ==================== Discharge ====================
 
   async createDischargeForm(dto: Record<string, any>, authHeader: string) {
@@ -511,32 +391,6 @@ export class ClinicalService {
 
   // ==================== Patient Journey ====================
 
-  async checkInAppointment(id: string, authHeader: string) {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.post(`/appointments/${id}/check-in`, {}, {
-          headers: { Authorization: authHeader },
-        }),
-      );
-      return response.data;
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  async completeAppointment(id: string, dto: Record<string, any>, authHeader: string) {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.post(`/appointments/${id}/complete`, dto, {
-          headers: { Authorization: authHeader },
-        }),
-      );
-      return response.data;
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
   async assignBedToEncounter(id: string, dto: Record<string, any>, authHeader: string) {
     try {
       const response = await firstValueFrom(
@@ -607,20 +461,6 @@ export class ClinicalService {
       const response = await firstValueFrom(
         this.httpService.get('/emergency/active', {
           headers: { Authorization: authHeader },
-        }),
-      );
-      return response.data;
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  async getAppointmentDashboardStats(query: Record<string, any>, authHeader: string) {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.get('/appointments/dashboard/stats', {
-          headers: { Authorization: authHeader },
-          params: query,
         }),
       );
       return response.data;

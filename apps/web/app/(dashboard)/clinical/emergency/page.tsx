@@ -34,6 +34,7 @@ import type {
 } from '@/lib/types/clinical';
 import type { Hospital, Department, Ward, Bed } from '@/lib/types/hospital';
 import { Loader2, Ambulance, Plus, RefreshCw, Clock, Stethoscope, ClipboardList, AlertCircle } from 'lucide-react';
+import { PatientSearchInput } from '@/components/shared/patient-search-input';
 
 const TRIAGE_CONFIG: Record<TriageCategory, { label: string; color: string; bgColor: string; borderColor: string; description: string }> = {
   red: {
@@ -514,12 +515,10 @@ export default function EmergencyCarePage() {
             </DialogHeader>
             <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
               <div className="space-y-2">
-                <Label htmlFor="patientId">Patient ID *</Label>
-                <Input
-                  id="patientId"
-                  placeholder="Search or enter patient ID"
+                <Label>Patient *</Label>
+                <PatientSearchInput
                   value={formData.patientId}
-                  onChange={(e) => handleInputChange('patientId', e.target.value)}
+                  onValueChange={(value) => handleInputChange('patientId', value)}
                 />
               </div>
               <div className="space-y-2">

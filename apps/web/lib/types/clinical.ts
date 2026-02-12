@@ -40,48 +40,14 @@ export interface ClinicalNote {
   updatedAt: string;
 }
 
-export type AppointmentStatus = 'scheduled' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show' | 'rescheduled';
-export type AppointmentType = 'consultation' | 'follow_up' | 'emergency' | 'procedure' | 'lab_review' | 'imaging_review' | 'referral' | 'check_up';
-
-export interface Appointment {
-  id: string;
-  patientId: string;
-  patientName?: string;
-  patientChiNumber?: string;
-  doctorId: string;
-  doctorName?: string;
-  hospitalId: string | null;
-  departmentId: string | null;
-  departmentName?: string;
-  type: AppointmentType;
-  status: AppointmentStatus;
-  scheduledDate: string;
-  scheduledTime: string;
-  duration: number;
-  reason: string | null;
-  notes: string | null;
-  autoAssigned: boolean;
-  referredFrom: string | null;
-  referredTo: string | null;
-  cancellationReason: string | null;
-  createdBy: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreateAppointmentDto {
-  patientId: string;
-  doctorId?: string;
-  hospitalId?: string;
-  departmentId?: string;
-  type: AppointmentType;
-  scheduledDate: string;
-  scheduledTime: string;
-  duration?: number;
-  reason?: string;
-  notes?: string;
-  autoAssign?: boolean;
-}
+// Appointment types are now in ../types/appointment.ts
+// Re-export for backward compatibility
+export type {
+  AppointmentStatus,
+  AppointmentType,
+  Appointment,
+  CreateAppointmentDto,
+} from './appointment';
 
 export type DischargeStatus = 'active' | 'pending_review' | 'completed' | 'cancelled';
 

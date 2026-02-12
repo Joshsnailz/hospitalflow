@@ -18,6 +18,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { patientsApi } from '@/lib/api/patients';
 import type { Patient, CreatePatientDto, Gender, MaritalStatus } from '@/lib/types/patient';
 import { Loader2, CheckCircle, AlertCircle, User, Phone, MapPin, Stethoscope } from 'lucide-react';
+import { Combobox } from '@/components/ui/combobox';
+import { NATIONALITIES } from '@/lib/data/nationalities';
+import { ETHNICITIES } from '@/lib/data/ethnicities';
+import { LANGUAGES } from '@/lib/data/languages';
+import { COUNTRIES } from '@/lib/data/countries';
 
 interface PatientFormProps {
   patient?: Patient;
@@ -275,31 +280,34 @@ export function PatientForm({ patient, mode }: PatientFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="nationality">Nationality</Label>
-            <Input
-              id="nationality"
+            <Combobox
               value={formData.nationality}
-              onChange={(e) => handleChange('nationality', e.target.value)}
-              placeholder="British"
+              onValueChange={(value) => handleChange('nationality', value)}
+              options={NATIONALITIES}
+              allowFreeText
+              placeholder="Select nationality"
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="ethnicity">Ethnicity</Label>
-            <Input
-              id="ethnicity"
+            <Combobox
               value={formData.ethnicity}
-              onChange={(e) => handleChange('ethnicity', e.target.value)}
-              placeholder="White British"
+              onValueChange={(value) => handleChange('ethnicity', value)}
+              options={ETHNICITIES}
+              allowFreeText
+              placeholder="Select ethnicity"
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="preferredLanguage">Preferred Language</Label>
-            <Input
-              id="preferredLanguage"
+            <Combobox
               value={formData.preferredLanguage}
-              onChange={(e) => handleChange('preferredLanguage', e.target.value)}
-              placeholder="English"
+              onValueChange={(value) => handleChange('preferredLanguage', value)}
+              options={LANGUAGES}
+              allowFreeText
+              placeholder="Select language"
             />
           </div>
         </CardContent>
@@ -408,11 +416,12 @@ export function PatientForm({ patient, mode }: PatientFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="country">Country</Label>
-            <Input
-              id="country"
+            <Combobox
               value={formData.country}
-              onChange={(e) => handleChange('country', e.target.value)}
-              placeholder="United Kingdom"
+              onValueChange={(value) => handleChange('country', value)}
+              options={COUNTRIES}
+              allowFreeText
+              placeholder="Select country"
             />
           </div>
         </CardContent>

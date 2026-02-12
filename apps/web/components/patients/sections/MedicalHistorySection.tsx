@@ -24,6 +24,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { patientsApi } from '@/lib/api/patients';
 import type { MedicalHistory, CreateMedicalHistoryDto, MedicalHistoryType, MedicalHistoryStatus } from '@/lib/types/patient';
 import { Plus, Edit, Trash2, Loader2, FileText, Activity, Stethoscope, Users, Syringe } from 'lucide-react';
+import { SnomedSearchInput } from '@/components/shared/snomed-search-input';
+import { Combobox } from '@/components/ui/combobox';
+import { ICD10_COMMON_CODES } from '@/lib/data/icd10-common';
 
 interface MedicalHistorySectionProps {
   patientId: string;
@@ -292,18 +295,22 @@ export function MedicalHistorySection({ patientId, initialData, onCountChange }:
             </div>
             <div className="space-y-2">
               <Label>Title *</Label>
-              <Input
+              <SnomedSearchInput
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="e.g., Type 2 Diabetes, Appendectomy"
+                onValueChange={(value) => setFormData({ ...formData, title: value })}
+                searchType="clinicalFindings"
+                allowFreeText
+                placeholder="Search conditions..."
               />
             </div>
             <div className="space-y-2">
               <Label>ICD Code</Label>
-              <Input
+              <Combobox
                 value={formData.icdCode}
-                onChange={(e) => setFormData({ ...formData, icdCode: e.target.value })}
-                placeholder="e.g., E11.9"
+                onValueChange={(value) => setFormData({ ...formData, icdCode: value })}
+                options={ICD10_COMMON_CODES}
+                allowFreeText
+                placeholder="Search ICD-10 codes..."
               />
             </div>
             <div className="space-y-2">

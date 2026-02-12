@@ -1,14 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 import { EncountersService } from '../encounters/encounters.service';
-import { AppointmentsService } from '../appointments/appointments.service';
 import { DischargeService } from '../discharge/discharge.service';
 import { ImagingService } from '../imaging/imaging.service';
 import { ControlledDrugsService } from '../controlled-drugs/controlled-drugs.service';
 import { EmergencyService } from '../emergency/emergency.service';
 import { CarePlansService } from '../care-plans/care-plans.service';
-import { AppointmentEntity } from '../appointments/entities/appointment.entity';
 import { EncounterEntity } from '../encounters/entities/encounter.entity';
 import { EmergencyVisitEntity } from '../emergency/entities/emergency-visit.entity';
 import { ControlledDrugEntryEntity } from '../controlled-drugs/entities/controlled-drug-entry.entity';
@@ -28,14 +28,12 @@ export class DashboardService {
 
   constructor(
     private readonly encountersService: EncountersService,
-    private readonly appointmentsService: AppointmentsService,
     private readonly dischargeService: DischargeService,
     private readonly imagingService: ImagingService,
     private readonly controlledDrugsService: ControlledDrugsService,
     private readonly emergencyService: EmergencyService,
     private readonly carePlansService: CarePlansService,
-    @InjectRepository(AppointmentEntity)
-    private readonly appointmentRepository: Repository<AppointmentEntity>,
+    private readonly httpService: HttpService,
     @InjectRepository(EncounterEntity)
     private readonly encounterRepository: Repository<EncounterEntity>,
     @InjectRepository(EmergencyVisitEntity)
@@ -46,13 +44,13 @@ export class DashboardService {
 
   // ==================== Public API ====================
 
-  async getAggregatedStats(userId?: string, role?: string): Promise<Record<string, unknown>> {
+  async getAggregatedStats(userId?: string, role?: string, authHeader?: string): Promise<Record<string, unknown>> {
     if (role && ADMIN_ROLES.includes(role)) {
-      return this.getAdminStats();
+      return this.getAdminStats(authHeader);
     }
 
     if (role && DOCTOR_ROLES.includes(role)) {
-      return this.getDoctorStats(userId ?? '');
+      return this.getDoctorStats(userId ?? '', authHeader);
     }
 
     if (role === 'nurse') {
@@ -63,28 +61,22 @@ export class DashboardService {
       return this.getPharmacistStats();
     }
 
-    // Fallback for prescriber or any other clinical role: return a
-    // lightweight combined view from the existing sub-service stats.
-    return this.getDefaultStats(userId, role);
+    return this.getDefaultStats(userId, role, authHeader);
   }
 
   // ==================== Admin / Clinical-Admin Stats ====================
 
-  private async getAdminStats(): Promise<Record<string, unknown>> {
+  private async getAdminStats(authHeader?: string): Promise<Record<string, unknown>> {
     const { today, tomorrow } = this.todayRange();
 
     const [
       totalPatientsRegistered,
-      scheduledToday,
-      checkedInToday,
       currentlyAdmitted,
       awaitingDischarge,
       dischargedToday,
       emergencyWaiting,
       emergencyBeingSeen,
-      appointmentsCompletedToday,
-      appointmentsCancelledToday,
-      appointmentsNoShowToday,
+      appointmentStats,
       dischargeStats,
       imagingStats,
       controlledDrugStats,
@@ -96,22 +88,6 @@ export class DashboardService {
         .select('COUNT(DISTINCT encounter.patient_id)', 'count')
         .getRawOne()
         .then((r) => parseInt(r?.count ?? '0', 10)),
-
-      // scheduledToday: appointments scheduled or confirmed for today
-      this.appointmentRepository
-        .createQueryBuilder('a')
-        .where('a.scheduledDate >= :today', { today })
-        .andWhere('a.scheduledDate < :tomorrow', { tomorrow })
-        .andWhere('a.status IN (:...statuses)', { statuses: ['scheduled', 'confirmed'] })
-        .getCount(),
-
-      // checkedInToday: appointments with status in_progress today
-      this.appointmentRepository
-        .createQueryBuilder('a')
-        .where('a.scheduledDate >= :today', { today })
-        .andWhere('a.scheduledDate < :tomorrow', { tomorrow })
-        .andWhere('a.status = :status', { status: 'in_progress' })
-        .getCount(),
 
       // currentlyAdmitted: encounters admitted or in_treatment
       this.encounterRepository
@@ -144,29 +120,8 @@ export class DashboardService {
         .where('v.status = :status', { status: 'being_seen' })
         .getCount(),
 
-      // appointmentsCompletedToday
-      this.appointmentRepository
-        .createQueryBuilder('a')
-        .where('a.scheduledDate >= :today', { today })
-        .andWhere('a.scheduledDate < :tomorrow', { tomorrow })
-        .andWhere('a.status = :status', { status: 'completed' })
-        .getCount(),
-
-      // appointmentsCancelledToday
-      this.appointmentRepository
-        .createQueryBuilder('a')
-        .where('a.scheduledDate >= :today', { today })
-        .andWhere('a.scheduledDate < :tomorrow', { tomorrow })
-        .andWhere('a.status = :status', { status: 'cancelled' })
-        .getCount(),
-
-      // appointmentsNoShowToday
-      this.appointmentRepository
-        .createQueryBuilder('a')
-        .where('a.scheduledDate >= :today', { today })
-        .andWhere('a.scheduledDate < :tomorrow', { tomorrow })
-        .andWhere('a.status = :status', { status: 'no_show' })
-        .getCount(),
+      // Appointment stats from appointment-service via HTTP
+      this.fetchAppointmentStats(undefined, 'admin', authHeader),
 
       // Supplementary sub-service stats
       this.safeCall(() => this.dischargeService.getDashboardStats()),
@@ -179,8 +134,8 @@ export class DashboardService {
       role: 'admin',
       patientFlow: {
         totalPatientsRegistered,
-        scheduledToday,
-        checkedInToday,
+        scheduledToday: appointmentStats?.totalToday ?? 0,
+        checkedInToday: appointmentStats?.checkedInToday ?? 0,
         currentlyAdmitted,
         awaitingDischarge,
         dischargedToday,
@@ -190,9 +145,11 @@ export class DashboardService {
         emergencyBeingSeen,
       },
       appointments: {
-        appointmentsCompletedToday,
-        appointmentsCancelledToday,
-        appointmentsNoShowToday,
+        appointmentsCompletedToday: appointmentStats?.completedToday ?? 0,
+        appointmentsCancelledToday: appointmentStats?.cancelledToday ?? 0,
+        appointmentsNoShowToday: appointmentStats?.noShowToday ?? 0,
+        pendingAcceptance: appointmentStats?.pendingAcceptance ?? 0,
+        pendingReschedule: appointmentStats?.pendingReschedule ?? 0,
       },
       discharge: dischargeStats,
       imaging: imagingStats,
@@ -203,35 +160,13 @@ export class DashboardService {
 
   // ==================== Doctor / Consultant Stats ====================
 
-  private async getDoctorStats(userId: string): Promise<Record<string, unknown>> {
-    const { today, tomorrow } = this.todayRange();
-
+  private async getDoctorStats(userId: string, authHeader?: string): Promise<Record<string, unknown>> {
     const [
-      myAppointmentsToday,
-      patientsInProgress,
       activeEncounters,
       pendingDischarges,
-      completedToday,
+      appointmentStats,
       carePlanStats,
     ] = await Promise.all([
-      // myAppointmentsToday: all non-cancelled/rescheduled appointments today
-      this.appointmentRepository
-        .createQueryBuilder('a')
-        .where('a.doctorId = :userId', { userId })
-        .andWhere('a.scheduledDate >= :today', { today })
-        .andWhere('a.scheduledDate < :tomorrow', { tomorrow })
-        .andWhere('a.status NOT IN (:...excludeStatuses)', {
-          excludeStatuses: ['cancelled', 'rescheduled'],
-        })
-        .getCount(),
-
-      // patientsInProgress: doctor's in_progress appointments
-      this.appointmentRepository
-        .createQueryBuilder('a')
-        .where('a.doctorId = :userId', { userId })
-        .andWhere('a.status = :status', { status: 'in_progress' })
-        .getCount(),
-
       // activeEncounters: doctor's encounters that are not discharged/deceased
       this.encounterRepository
         .createQueryBuilder('e')
@@ -254,25 +189,20 @@ export class DashboardService {
         .andWhere('e.status = :status', { status: 'awaiting_discharge' })
         .getCount(),
 
-      // completedToday: appointments completed today by this doctor
-      this.appointmentRepository
-        .createQueryBuilder('a')
-        .where('a.doctorId = :userId', { userId })
-        .andWhere('a.scheduledDate >= :today', { today })
-        .andWhere('a.scheduledDate < :tomorrow', { tomorrow })
-        .andWhere('a.status = :status', { status: 'completed' })
-        .getCount(),
+      // Appointment stats from appointment-service via HTTP
+      this.fetchAppointmentStats(userId, 'doctor', authHeader),
 
       this.safeCall(() => this.carePlansService.getDashboardStats()),
     ]);
 
     return {
       role: 'doctor',
-      myAppointmentsToday,
-      patientsInProgress,
+      myAppointmentsToday: appointmentStats?.todayAppointments ?? 0,
+      patientsInProgress: appointmentStats?.patientsInProgress ?? 0,
       activeEncounters,
       pendingDischarges,
-      completedToday,
+      completedToday: appointmentStats?.completedToday ?? 0,
+      pendingAcceptance: appointmentStats?.pendingAcceptance ?? 0,
       carePlans: carePlanStats,
     };
   }
@@ -370,7 +300,7 @@ export class DashboardService {
 
   // ==================== Default / Fallback Stats ====================
 
-  private async getDefaultStats(userId?: string, role?: string): Promise<Record<string, unknown>> {
+  private async getDefaultStats(userId?: string, role?: string, authHeader?: string): Promise<Record<string, unknown>> {
     const [
       encounterStats,
       appointmentStats,
@@ -381,7 +311,7 @@ export class DashboardService {
       carePlanStats,
     ] = await Promise.all([
       this.safeCall(() => this.encountersService.getDashboardStats(userId, role)),
-      this.safeCall(() => this.appointmentsService.getDashboardStats(userId, role)),
+      this.fetchAppointmentStats(userId, role, authHeader),
       this.safeCall(() => this.dischargeService.getDashboardStats(role)),
       this.safeCall(() => this.imagingService.getDashboardStats()),
       this.safeCall(() => this.controlledDrugsService.getDashboardStats()),
@@ -404,6 +334,38 @@ export class DashboardService {
   // ==================== Helpers ====================
 
   /**
+   * Fetches appointment dashboard stats from the appointment-service via HTTP.
+   */
+  private async fetchAppointmentStats(
+    userId?: string,
+    role?: string,
+    authHeader?: string,
+  ): Promise<Record<string, any>> {
+    try {
+      const params: Record<string, string> = {};
+      if (userId) params.userId = userId;
+      if (role) params.role = role;
+
+      const headers: Record<string, string> = {};
+      if (authHeader) headers.Authorization = authHeader;
+
+      const response = await firstValueFrom(
+        this.httpService.get('/appointments/dashboard/stats', {
+          params,
+          headers,
+        }),
+      );
+
+      return response.data?.data ?? response.data ?? {};
+    } catch (error) {
+      this.logger.warn(
+        `Failed to fetch appointment stats from appointment-service: ${(error as Error)?.message ?? error}`,
+      );
+      return {};
+    }
+  }
+
+  /**
    * Returns the start of today and start of tomorrow as ISO strings
    * for use in date range queries.
    */
@@ -420,8 +382,6 @@ export class DashboardService {
 
   /**
    * Safely calls an async function and returns an empty object on failure.
-   * This allows the dashboard to degrade gracefully if a sub-service is
-   * unavailable or throws an unexpected error.
    */
   private async safeCall<T>(fn: () => Promise<T>): Promise<T | Record<string, never>> {
     try {

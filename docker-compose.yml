@@ -134,6 +134,26 @@ services:
     networks:
       - clinical-network
 
+  postgres-appointment:
+    image: postgres:15-alpine
+    container_name: clinical-portal-appointment-db
+    environment:
+      POSTGRES_USER: ${DB_USER:-clinical_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-clinical_password}
+      POSTGRES_DB: appointment_db
+    volumes:
+      - appointment_db_data:/var/lib/postgresql/data
+    ports:
+      - '127.0.0.1:5441:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-clinical_user} -d appointment_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - clinical-network
+
   postgres-hospital:
     image: postgres:15-alpine
     container_name: clinical-portal-hospital-db
@@ -446,6 +466,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production-min-32-chars}
       CORS_ORIGIN: http://localhost:3100
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-clinical_user}:${RABBITMQ_PASSWORD:-rabbitmq_password}@rabbitmq:5672/clinical_portal
+      APPOINTMENT_SERVICE_URL: http://appointment-service:3008
     ports:
       - '3006:3006'
     healthcheck:
@@ -493,6 +514,39 @@ services:
     networks:
       - clinical-network
 
+  appointment-service:
+    <<: *app_base
+    container_name: clinical-portal-appointment-service
+    command: sh /repo/docker-entrypoint.sh appointment-service
+    environment:
+      NODE_ENV: production
+      PORT: 3008
+      APPOINTMENT_DB_HOST: postgres-appointment
+      APPOINTMENT_DB_PORT: 5432
+      APPOINTMENT_DB_USER: ${DB_USER:-clinical_user}
+      APPOINTMENT_DB_PASSWORD: ${DB_PASSWORD:-clinical_password}
+      APPOINTMENT_DB_NAME: appointment_db
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production-min-32-chars}
+      CORS_ORIGIN: http://localhost:3100
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-clinical_user}:${RABBITMQ_PASSWORD:-rabbitmq_password}@rabbitmq:5672/clinical_portal
+      AUTH_SERVICE_URL: http://auth-service:3001
+      CLINICAL_SERVICE_URL: http://clinical-service:3006
+    ports:
+      - '3008:3008'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:3008/healthcheck']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      postgres-appointment:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - clinical-network
+
   api-gateway:
     <<: *app_base
     container_name: clinical-portal-api-gateway
@@ -507,6 +561,7 @@ services:
       PATIENT_SERVICE_URL: http://patient-service:3005
       CLINICAL_SERVICE_URL: http://clinical-service:3006
       HOSPITAL_SERVICE_URL: http://hospital-service:3007
+      APPOINTMENT_SERVICE_URL: http://appointment-service:3008
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production-min-32-chars}
       CORS_ORIGIN: http://localhost:3100
     ports:
@@ -531,6 +586,8 @@ services:
       clinical-service:
         condition: service_healthy
       hospital-service:
+        condition: service_healthy
+      appointment-service:
         condition: service_healthy
     networks:
       - clinical-network
@@ -566,6 +623,7 @@ volumes:
   patient_db_data:
   clinical_db_data:
   hospital_db_data:
+  appointment_db_data:
   rabbitmq_data:
   redis_data:
   prometheus_data:

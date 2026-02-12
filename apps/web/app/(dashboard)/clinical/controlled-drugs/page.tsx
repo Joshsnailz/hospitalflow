@@ -39,6 +39,11 @@ import type {
   CreateControlledDrugEntryDto,
 } from '@/lib/types/clinical';
 import { Loader2, Pill, Plus, RefreshCw } from 'lucide-react';
+import { PatientSearchInput } from '@/components/shared/patient-search-input';
+import { StaffSearchInput } from '@/components/shared/staff-search-input';
+import { SnomedSearchInput } from '@/components/shared/snomed-search-input';
+import { Combobox } from '@/components/ui/combobox';
+import { DRUG_UNITS } from '@/lib/data/drug-units';
 
 const SCHEDULE_LABELS: Record<DrugSchedule, string> = {
   schedule_2: 'Schedule 2',
@@ -288,12 +293,13 @@ export default function ControlledDrugsPage() {
             <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="drugName">Drug Name *</Label>
-                  <Input
-                    id="drugName"
-                    placeholder="e.g., Morphine Sulfate"
+                  <Label>Drug Name *</Label>
+                  <SnomedSearchInput
                     value={formData.drugName}
-                    onChange={(e) => handleInputChange('drugName', e.target.value)}
+                    onValueChange={(value) => handleInputChange('drugName', value)}
+                    searchType="drugs"
+                    allowFreeText
+                    placeholder="Search medications..."
                   />
                 </div>
                 <div className="space-y-2">
@@ -358,12 +364,13 @@ export default function ControlledDrugsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="unit">Unit *</Label>
-                  <Input
-                    id="unit"
-                    placeholder="e.g., mg, ml, tablets"
+                  <Label>Unit *</Label>
+                  <Combobox
                     value={formData.unit}
-                    onChange={(e) => handleInputChange('unit', e.target.value)}
+                    onValueChange={(value) => handleInputChange('unit', value)}
+                    options={DRUG_UNITS}
+                    allowFreeText
+                    placeholder="Select unit"
                   />
                 </div>
                 <div className="space-y-2">
@@ -380,33 +387,30 @@ export default function ControlledDrugsPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="patientId">
-                  Patient ID {formData.entryType === 'administration' ? '*' : '(optional)'}
+                <Label>
+                  Patient {formData.entryType === 'administration' ? '*' : '(optional)'}
                 </Label>
-                <Input
-                  id="patientId"
-                  placeholder="Search or enter patient ID"
+                <PatientSearchInput
                   value={formData.patientId}
-                  onChange={(e) => handleInputChange('patientId', e.target.value)}
+                  onValueChange={(value) => handleInputChange('patientId', value)}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="witnessedBy">Witnessed By</Label>
-                  <Input
-                    id="witnessedBy"
-                    placeholder="Witness name or ID"
+                  <Label>Witnessed By</Label>
+                  <StaffSearchInput
                     value={formData.witnessedBy}
-                    onChange={(e) => handleInputChange('witnessedBy', e.target.value)}
+                    onValueChange={(value) => handleInputChange('witnessedBy', value)}
+                    placeholder="Search staff..."
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="prescribedBy">Prescribed By</Label>
-                  <Input
-                    id="prescribedBy"
-                    placeholder="Prescriber name or ID"
+                  <Label>Prescribed By</Label>
+                  <StaffSearchInput
                     value={formData.prescribedBy}
-                    onChange={(e) => handleInputChange('prescribedBy', e.target.value)}
+                    onValueChange={(value) => handleInputChange('prescribedBy', value)}
+                    role="doctor"
+                    placeholder="Search doctors..."
                   />
                 </div>
               </div>

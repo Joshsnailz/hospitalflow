@@ -41,6 +41,10 @@ import {
   CalendarCheck,
   RefreshCw,
 } from 'lucide-react';
+import { SnomedSearchInput } from '@/components/shared/snomed-search-input';
+import { Combobox } from '@/components/ui/combobox';
+import { MEDICATION_FREQUENCIES } from '@/lib/data/medication-frequencies';
+import { MEDICATION_ROUTES } from '@/lib/data/medication-routes';
 
 const EMPTY_MEDICATION: MedicationEntry = {
   name: '',
@@ -539,10 +543,12 @@ export default function DischargeDetailPage({ params }: DischargeDetailPageProps
                     {medications.map((med, index) => (
                       <TableRow key={index}>
                         <TableCell>
-                          <Input
-                            placeholder="Name"
+                          <SnomedSearchInput
                             value={med.name}
-                            onChange={(e) => handleMedicationChange(index, 'name', e.target.value)}
+                            onValueChange={(value) => handleMedicationChange(index, 'name', value)}
+                            searchType="drugs"
+                            allowFreeText
+                            placeholder="Search medications..."
                           />
                         </TableCell>
                         <TableCell>
@@ -553,17 +559,20 @@ export default function DischargeDetailPage({ params }: DischargeDetailPageProps
                           />
                         </TableCell>
                         <TableCell>
-                          <Input
-                            placeholder="Frequency"
+                          <Combobox
                             value={med.frequency}
-                            onChange={(e) => handleMedicationChange(index, 'frequency', e.target.value)}
+                            onValueChange={(value) => handleMedicationChange(index, 'frequency', value)}
+                            options={MEDICATION_FREQUENCIES}
+                            allowFreeText
+                            placeholder="Frequency"
                           />
                         </TableCell>
                         <TableCell>
-                          <Input
-                            placeholder="Route"
+                          <Combobox
                             value={med.route}
-                            onChange={(e) => handleMedicationChange(index, 'route', e.target.value)}
+                            onValueChange={(value) => handleMedicationChange(index, 'route', value)}
+                            options={MEDICATION_ROUTES}
+                            placeholder="Route"
                           />
                         </TableCell>
                         <TableCell>

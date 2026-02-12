@@ -24,6 +24,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { patientsApi } from '@/lib/api/patients';
 import type { MedicalAid, CreateMedicalAidDto, MedicalAidStatus } from '@/lib/types/patient';
 import { Plus, Edit, Trash2, Loader2, CreditCard, Star, Calendar, Phone, Mail } from 'lucide-react';
+import { Combobox } from '@/components/ui/combobox';
+import { POLICY_HOLDER_RELATIONSHIPS } from '@/lib/data/relationships';
 
 interface MedicalAidSectionProps {
   patientId: string;
@@ -300,10 +302,11 @@ export function MedicalAidSection({ patientId, initialData, onCountChange }: Med
               </div>
               <div className="space-y-2">
                 <Label>Relationship to Patient</Label>
-                <Input
+                <Combobox
                   value={formData.policyHolderRelationship}
-                  onChange={(e) => setFormData({ ...formData, policyHolderRelationship: e.target.value })}
-                  placeholder="Self, Spouse, Parent"
+                  onValueChange={(value) => setFormData({ ...formData, policyHolderRelationship: value })}
+                  options={POLICY_HOLDER_RELATIONSHIPS}
+                  placeholder="Select relationship"
                 />
               </div>
             </div>

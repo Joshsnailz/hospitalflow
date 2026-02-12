@@ -1,12 +1,27 @@
 {
   "rabbit_version": "3.12.0",
-  "users": [],
+  "users": [
+    {
+      "name": "clinical_user",
+      "password_hash": "LEUajJaSp1Mya+uS7KecOmynLqQxq6AiBlXXsFNyTb43+RPW",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": "administrator"
+    }
+  ],
   "vhosts": [
     {
       "name": "clinical_portal"
     }
   ],
-  "permissions": [],
+  "permissions": [
+    {
+      "user": "clinical_user",
+      "vhost": "clinical_portal",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
   "exchanges": [
     {
       "name": "clinical.events",
@@ -80,14 +95,20 @@
       "vhost": "clinical_portal",
       "durable": true,
       "auto_delete": false,
-      "arguments": {}
+      "arguments": {
+        "x-dead-letter-exchange": "clinical.dlx",
+        "x-dead-letter-routing-key": "audit.dead"
+      }
     },
     {
       "name": "audit.data-access",
       "vhost": "clinical_portal",
       "durable": true,
       "auto_delete": false,
-      "arguments": {}
+      "arguments": {
+        "x-dead-letter-exchange": "clinical.dlx",
+        "x-dead-letter-routing-key": "audit.dead"
+      }
     },
     {
       "name": "patient.accessed",
@@ -162,6 +183,60 @@
     },
     {
       "name": "clinical-service.dead",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "appointment-service.patient.updated",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "clinical.dlx",
+        "x-dead-letter-routing-key": "appointment-service.dead"
+      }
+    },
+    {
+      "name": "appointment-service.patient.deactivated",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "clinical.dlx",
+        "x-dead-letter-routing-key": "appointment-service.dead"
+      }
+    },
+    {
+      "name": "appointment-service.user.updated",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "clinical.dlx",
+        "x-dead-letter-routing-key": "appointment-service.dead"
+      }
+    },
+    {
+      "name": "appointment-service.user.deactivated",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "clinical.dlx",
+        "x-dead-letter-routing-key": "appointment-service.dead"
+      }
+    },
+    {
+      "name": "appointment-service.dead",
+      "vhost": "clinical_portal",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "audit.logs.dlq",
       "vhost": "clinical_portal",
       "durable": true,
       "auto_delete": false,
@@ -280,6 +355,48 @@
       "destination": "clinical-service.dead",
       "destination_type": "queue",
       "routing_key": "clinical-service.dead"
+    },
+    {
+      "source": "clinical.events",
+      "vhost": "clinical_portal",
+      "destination": "appointment-service.patient.updated",
+      "destination_type": "queue",
+      "routing_key": "patient.updated"
+    },
+    {
+      "source": "clinical.events",
+      "vhost": "clinical_portal",
+      "destination": "appointment-service.patient.deactivated",
+      "destination_type": "queue",
+      "routing_key": "patient.deactivated"
+    },
+    {
+      "source": "clinical.events",
+      "vhost": "clinical_portal",
+      "destination": "appointment-service.user.updated",
+      "destination_type": "queue",
+      "routing_key": "user.updated"
+    },
+    {
+      "source": "clinical.events",
+      "vhost": "clinical_portal",
+      "destination": "appointment-service.user.deactivated",
+      "destination_type": "queue",
+      "routing_key": "user.deactivated"
+    },
+    {
+      "source": "clinical.dlx",
+      "vhost": "clinical_portal",
+      "destination": "appointment-service.dead",
+      "destination_type": "queue",
+      "routing_key": "appointment-service.dead"
+    },
+    {
+      "source": "clinical.dlx",
+      "vhost": "clinical_portal",
+      "destination": "audit.logs.dlq",
+      "destination_type": "queue",
+      "routing_key": "audit.dead"
     }
   ]
 }

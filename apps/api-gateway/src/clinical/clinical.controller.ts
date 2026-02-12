@@ -31,15 +31,6 @@ export class ClinicalController {
   }
 
   @ApiTags('dashboard')
-  @Get('dashboard/appointments')
-  async getAppointmentDashboardStats(
-    @Query() query: Record<string, any>,
-    @Headers('authorization') authHeader: string,
-  ) {
-    return this.clinicalService.getAppointmentDashboardStats(query, authHeader);
-  }
-
-  @ApiTags('dashboard')
   @Get('dashboard/encounters')
   async getEncounterDashboardStats(
     @Query() query: Record<string, any>,
@@ -149,112 +140,6 @@ export class ClinicalController {
     @Headers('authorization') authHeader: string,
   ) {
     return this.clinicalService.getEncounterNotes(id, authHeader);
-  }
-
-  // ==================== Appointments ====================
-
-  @ApiTags('appointments')
-  @Post('appointments')
-  async createAppointment(
-    @Body() dto: Record<string, any>,
-    @Headers('authorization') authHeader: string,
-  ) {
-    return this.clinicalService.createAppointment(dto, authHeader);
-  }
-
-  @ApiTags('appointments')
-  @Get('appointments')
-  async findAllAppointments(
-    @Query() query: Record<string, any>,
-    @Headers('authorization') authHeader: string,
-  ) {
-    return this.clinicalService.findAllAppointments(query, authHeader);
-  }
-
-  @ApiTags('appointments')
-  @Get('appointments/doctor/:doctorId/upcoming')
-  async getUpcomingAppointments(
-    @Param('doctorId') doctorId: string,
-    @Headers('authorization') authHeader: string,
-  ) {
-    return this.clinicalService.getUpcomingAppointments(doctorId, authHeader);
-  }
-
-  @ApiTags('appointments')
-  @Get('appointments/patient/:patientId')
-  async getPatientAppointments(
-    @Param('patientId') patientId: string,
-    @Headers('authorization') authHeader: string,
-  ) {
-    return this.clinicalService.getPatientAppointments(patientId, authHeader);
-  }
-
-  @ApiTags('appointments')
-  @Get('appointments/:id')
-  async findOneAppointment(
-    @Param('id') id: string,
-    @Headers('authorization') authHeader: string,
-  ) {
-    return this.clinicalService.findOneAppointment(id, authHeader);
-  }
-
-  @ApiTags('appointments')
-  @Patch('appointments/:id')
-  async updateAppointment(
-    @Param('id') id: string,
-    @Body() dto: Record<string, any>,
-    @Headers('authorization') authHeader: string,
-  ) {
-    return this.clinicalService.updateAppointment(id, dto, authHeader);
-  }
-
-  @ApiTags('appointments')
-  @Post('appointments/:id/cancel')
-  async cancelAppointment(
-    @Param('id') id: string,
-    @Body() dto: Record<string, any>,
-    @Headers('authorization') authHeader: string,
-  ) {
-    return this.clinicalService.cancelAppointment(id, dto, authHeader);
-  }
-
-  @ApiTags('appointments')
-  @Post('appointments/:id/reschedule')
-  async rescheduleAppointment(
-    @Param('id') id: string,
-    @Body() dto: Record<string, any>,
-    @Headers('authorization') authHeader: string,
-  ) {
-    return this.clinicalService.rescheduleAppointment(id, dto, authHeader);
-  }
-
-  @ApiTags('appointments')
-  @Post('appointments/:id/refer')
-  async referAppointment(
-    @Param('id') id: string,
-    @Body() dto: Record<string, any>,
-    @Headers('authorization') authHeader: string,
-  ) {
-    return this.clinicalService.referAppointment(id, dto, authHeader);
-  }
-
-  @ApiTags('appointments')
-  @Post('appointments/:id/check-in')
-  async checkInAppointment(
-    @Param('id') id: string,
-    @Headers('authorization') authHeader: string,
-  ) {
-    return this.clinicalService.checkInAppointment(id, authHeader);
-  }
-
-  @ApiTags('appointments')
-  @Post('appointments/:id/complete')
-  async completeAppointment(
-    @Param('id') id: string,
-    @Body() dto: Record<string, any>,
-    @Headers('authorization') authHeader: string,
-  ) {
-    return this.clinicalService.completeAppointment(id, dto, authHeader);
   }
 
   // ==================== Discharge ====================

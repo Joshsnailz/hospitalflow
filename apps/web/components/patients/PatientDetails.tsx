@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { patientsApi } from '@/lib/api/patients';
 import { clinicalApi } from '@/lib/api/clinical';
+import { appointmentsApi } from '@/lib/api/appointments';
 import type { Patient } from '@/lib/types/patient';
 import type { Encounter, Appointment, DischargeForm, EmergencyVisit } from '@/lib/types/clinical';
 import {
@@ -82,7 +83,7 @@ export function PatientDetails({ patientId }: PatientDetailsProps) {
     try {
       const [enc, apt, dis, emg] = await Promise.allSettled([
         clinicalApi.getEncounters({ patientId }),
-        clinicalApi.getPatientAppointments(patientId),
+        appointmentsApi.getPatientAppointments(patientId),
         clinicalApi.getPatientDischargeForms(patientId),
         clinicalApi.getEmergencyVisitsByPatient(patientId),
       ]);
@@ -213,11 +214,11 @@ export function PatientDetails({ patientId }: PatientDetailsProps) {
     appointments.forEach((apt) => {
       events.push({
         id: `apt-${apt.id}`,
-        date: `${apt.scheduledDate}T${apt.scheduledTime}`,
+        date: apt.scheduledDate,
         type: 'appointment',
         label: 'Appointment',
         status: apt.status,
-        summary: apt.reason || `${apt.type.replace('_', ' ')} appointment`,
+        summary: apt.reason || `${apt.appointmentType.replace('_', ' ')} appointment`,
         clinician: apt.doctorName ? `Dr. ${apt.doctorName}` : undefined,
         icon: <CalendarDays className="h-4 w-4" />,
         linkTo: `/appointments/${apt.id}`,
@@ -673,10 +674,10 @@ export function PatientDetails({ patientId }: PatientDetailsProps) {
                           }>
                             {apt.status}
                           </Badge>
-                          <Badge variant="outline">{apt.type.replace('_', ' ')}</Badge>
+                          <Badge variant="outline">{apt.appointmentType.replace('_', ' ')}</Badge>
                         </div>
                         <p className="text-sm font-medium">
-                          {new Date(apt.scheduledDate).toLocaleDateString('en-GB')} at {apt.scheduledTime}
+                          {new Date(apt.scheduledDate).toLocaleDateString('en-GB')} at {new Date(apt.scheduledDate).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                         </p>
                         {apt.doctorName && <p className="text-sm text-muted-foreground">With: Dr. {apt.doctorName}</p>}
                         {apt.reason && <p className="text-xs text-muted-foreground">{apt.reason}</p>}

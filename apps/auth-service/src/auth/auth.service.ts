@@ -332,6 +332,44 @@ export class AuthService {
     };
   }
 
+  async findClinicians(): Promise<
+    Array<{
+      id: string;
+      firstName: string;
+      lastName: string;
+      role: string;
+    }>
+  > {
+    const clinicians = await this.userRepository
+      .createQueryBuilder('user')
+      .select(['user.id', 'user.firstName', 'user.lastName', 'user.role'])
+      .where('user.isActive = :isActive', { isActive: true })
+      .andWhere('user.role NOT IN (:...excludeRoles)', { excludeRoles: ['super_admin', 'clinical_admin'] })
+      .orderBy(
+        `CASE "user"."role"
+          WHEN 'consultant' THEN 1
+          WHEN 'doctor' THEN 2
+          WHEN 'nurse' THEN 3
+          WHEN 'prescriber' THEN 4
+          WHEN 'hospital_pharmacist' THEN 5
+          WHEN 'pharmacy_support_manager' THEN 6
+          WHEN 'pharmacy_technician' THEN 7
+          WHEN 'pharmacy_support_worker' THEN 8
+          ELSE 9
+        END`,
+        'ASC',
+      )
+      .addOrderBy('user.lastName', 'ASC')
+      .getMany();
+
+    return clinicians.map((u) => ({
+      id: u.id,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      role: u.role,
+    }));
+  }
+
   async activateUser(userId: string): Promise<void> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {

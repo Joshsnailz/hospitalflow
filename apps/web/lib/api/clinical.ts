@@ -2,8 +2,6 @@ import { apiClient } from './client';
 import type {
   Encounter,
   ClinicalNote,
-  Appointment,
-  CreateAppointmentDto,
   DischargeForm,
   ImagingRequest,
   CreateImagingRequestDto,
@@ -50,52 +48,6 @@ export const clinicalApi = {
 
   getEncounterNotes: async (encounterId: string): Promise<{ success: boolean; data: ClinicalNote[] }> => {
     const response = await apiClient.get(`/encounters/${encounterId}/notes`);
-    return response.data;
-  },
-
-  // Appointments
-  createAppointment: async (data: CreateAppointmentDto): Promise<{ success: boolean; data: Appointment }> => {
-    const response = await apiClient.post('/appointments', data);
-    return response.data;
-  },
-
-  getAppointments: async (params?: Record<string, any>): Promise<{ success: boolean; data: Appointment[]; total?: number }> => {
-    const response = await apiClient.get('/appointments', { params });
-    return response.data;
-  },
-
-  getAppointment: async (id: string): Promise<{ success: boolean; data: Appointment }> => {
-    const response = await apiClient.get(`/appointments/${id}`);
-    return response.data;
-  },
-
-  updateAppointment: async (id: string, data: Record<string, any>): Promise<{ success: boolean; data: Appointment }> => {
-    const response = await apiClient.patch(`/appointments/${id}`, data);
-    return response.data;
-  },
-
-  cancelAppointment: async (id: string, reason?: string): Promise<{ success: boolean; data: Appointment }> => {
-    const response = await apiClient.post(`/appointments/${id}/cancel`, { cancellationReason: reason });
-    return response.data;
-  },
-
-  rescheduleAppointment: async (id: string, data: { scheduledDate: string; scheduledTime: string; reason?: string }): Promise<{ success: boolean; data: Appointment }> => {
-    const response = await apiClient.post(`/appointments/${id}/reschedule`, data);
-    return response.data;
-  },
-
-  referAppointment: async (id: string, data: { referredTo: string; departmentId?: string; reason?: string }): Promise<{ success: boolean; data: Appointment }> => {
-    const response = await apiClient.post(`/appointments/${id}/refer`, data);
-    return response.data;
-  },
-
-  getUpcomingAppointments: async (doctorId: string): Promise<{ success: boolean; data: Appointment[] }> => {
-    const response = await apiClient.get(`/appointments/doctor/${doctorId}/upcoming`);
-    return response.data;
-  },
-
-  getPatientAppointments: async (patientId: string): Promise<{ success: boolean; data: Appointment[] }> => {
-    const response = await apiClient.get(`/appointments/patient/${patientId}`);
     return response.data;
   },
 
@@ -215,16 +167,6 @@ export const clinicalApi = {
   },
 
   // Patient Journey
-  checkInAppointment: async (id: string) => {
-    const response = await apiClient.post(`/appointments/${id}/check-in`);
-    return response.data;
-  },
-
-  completeAppointment: async (id: string, data: any) => {
-    const response = await apiClient.post(`/appointments/${id}/complete`, data);
-    return response.data;
-  },
-
   assignBedToEncounter: async (encounterId: string, data: { wardId: string; bedId: string }) => {
     const response = await apiClient.post(`/encounters/${encounterId}/assign-bed`, data);
     return response.data;
